@@ -32,7 +32,7 @@ function LigneProduit({ icone, nom, marque, chevron, onPress }: { icone: string;
       </View>
       <View style={styles.ligneInfo}>
         <Text style={styles.ligneNom} numberOfLines={1}>
-          {formaterNomListe(nom)}
+          {formaterNomListe(nom, marque)}
         </Text>
         <Text style={styles.ligneMarque} numberOfLines={1}>
           {formaterMarque(marque, 40)}

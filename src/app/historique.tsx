@@ -100,7 +100,7 @@ export default function HistoriqueScreen() {
               </View>
               <View style={styles.ligneInfo}>
                 <Text style={styles.ligneNom} numberOfLines={1}>
-                  {formaterNomListe(h.nom) || 'Produit inconnu'}
+                  {formaterNomListe(h.nom, h.marque) || 'Produit inconnu'}
                 </Text>
                 <Text style={styles.ligneDate} numberOfLines={1}>
                   {dateEnLettres(h)}

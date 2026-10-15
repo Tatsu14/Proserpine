@@ -66,11 +66,35 @@ export function formaterQuantite(quantite: string | null | undefined): string {
   return `${nombre} ${unite}`;
 }
 
+// Mots qui annoncent des DÉTAILS commerciaux, pas le type de produit (« Mouchoirs | Confort 4 épaisseurs… »).
+const MOTS_DETAIL = new Set([
+  'confort', 'comfort', 'ultra', 'maxi', 'format', 'pack', 'lot',
+  'familial', 'familiale', 'gourmand', 'gourmande',
+]);
+const LONGUEUR_MAX_TITRE = 32;
+
+/**
+ * Abrège un nom trop détaillé : on garde le début (le TYPE de produit) et on coupe dès le premier
+ * chiffre ou mot de détail. « Mouchoirs Confort 4 Epaisseurs Ultra Doux FSC » → « Mouchoirs ».
+ * Filet de sécurité : au-delà de 32 caractères, on coupe sur une limite de mot avec « … ».
+ */
+export function abregerTitre(titre: string): string {
+  const mots = titre.split(' ');
+  // Premier mot qui annonce un détail, mais jamais en tout premier (il faut garder un type de produit).
+  const coupe = mots.findIndex((mot, i) => i > 0 && (/[0-9]/.test(mot) || MOTS_DETAIL.has(mot.toLowerCase())));
+  let court = coupe > 0 ? mots.slice(0, coupe).join(' ') : titre;
+  // On ne garde pas une coupe trop pauvre (moins de 5 lettres) : mieux vaut le nom entier.
+  if (court.length < 5) court = titre;
+  return raccourcir(court, LONGUEUR_MAX_TITRE);
+}
+
 export type ProduitAffiche = {
   /** Nom court, en casse normale, sans la quantité ni la marque en tête. */
   titre: string;
   /** Ligne secondaire : « Marque · quantité ». */
   sousTitre: string;
+  /** Nom d'origine, complet (pour un éventuel affichage détaillé). */
+  titreComplet: string;
 };
 
 /**
@@ -101,13 +125,11 @@ export function formaterProduit(nom: string | null | undefined, marque: string |
   }
 
   const sousTitre = [marqueAffichee, quantiteAffichee].filter(Boolean).join(' · ');
-  const final = titre || nettoyer(nom);
-  return { titre: final.charAt(0).toUpperCase() + final.slice(1), sousTitre };
+  const final = abregerTitre(titre || nettoyer(nom));
+  return { titre: final.charAt(0).toUpperCase() + final.slice(1), sousTitre, titreComplet: nettoyer(nom) };
 }
 
 /** Nom pour les listes et les cartes : on adoucit les capitales, on garde le reste (le texte est déjà tronqué par l'écran). */
-export function formaterNomListe(nom: string | null | undefined): string {
-  const propre = nettoyer(nom);
-  const net = estToutEnCapitales(propre) ? enTitre(propre) : propre;
-  return net.charAt(0).toUpperCase() + net.slice(1);
+export function formaterNomListe(nom: string | null | undefined, marque?: string | null): string {
+  return formaterProduit(nom, marque).titre;
 }

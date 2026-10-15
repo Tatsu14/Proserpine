@@ -73,7 +73,7 @@ function CarteStats({ p, rang, mode, onPress }: { p: HistoriqueItem; rang: numbe
     >
       <Text style={styles.rang}>#{rang}</Text>
       <Text style={styles.nomCarte} numberOfLines={2}>
-        {formaterNomListe(p.nom) || 'Produit'}
+        {formaterNomListe(p.nom, p.marque) || 'Produit'}
       </Text>
       {mode === 'score' && typeof p.ecoScore === 'number' ? (
         <Text style={[styles.score, { color: couleurScore(p.ecoScore) }]}>{p.ecoScore}/100</Text>
