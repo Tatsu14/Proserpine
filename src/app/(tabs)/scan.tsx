@@ -43,6 +43,7 @@ export default function ScanScreen() {
 
   const [camera, setCamera] = useState(false); // la caméra tourne-t-elle ?
   const [texte, setTexte] = useState(TEXTE_ATTENTE);
+  const [lampe, setLampe] = useState(false); // lampe de poche allumée ?
   const [zone, setZone] = useState({ largeur: 0, hauteur: 0 }); // taille de l'écran
   const enTraitement = useRef(false);
 
@@ -133,6 +134,7 @@ export default function ScanScreen() {
     setTexte('Code-barre détecté !');
     Vibration.vibrate(100);
     setCamera(false); // la caméra s'arrête pendant la recherche
+    setLampe(false);
     ui.chargement('Recherche du produit...');
 
     const produit = await rechercherProduitParEAN(code);
@@ -176,6 +178,7 @@ export default function ScanScreen() {
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
+          enableTorch={lampe}
           barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8'] }}
           onBarcodeScanned={surCodeLu}
         />
@@ -205,10 +208,23 @@ export default function ScanScreen() {
         </>
       ) : null}
 
-      {/* .scan-ui-layer : le texte d'aide, au centre de l'écran */}
-      <View pointerEvents="none" style={styles.couche}>
-        <Text style={styles.texte}>{texte}</Text>
-      </View>
+      {/* Texte d'aide : SOUS le cadre de visée (au centre il masquerait la zone où l'on place le code-barres) */}
+      {prete ? (
+        <View pointerEvents="none" style={[styles.couche, { top: haut + cote + 24 }]}>
+          <Text style={styles.texte}>{texte}</Text>
+        </View>
+      ) : null}
+
+      {/* Lampe de poche : utile dans un magasin sombre */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={lampe ? 'Éteindre la lampe' : 'Allumer la lampe'}
+        accessibilityState={{ selected: lampe }}
+        onPress={() => setLampe((l) => !l)}
+        style={[styles.retour, styles.lampe, { top: 16 + marges.top }, lampe && { backgroundColor: couleurs.marque }]}
+      >
+        <Icone nom={lampe ? 'flash_on' : 'flash_off'} taille={24} couleur={lampe ? couleurs.marqueSombre : '#FFFFFF'} />
+      </Pressable>
 
       {/* .back-btn */}
       <Pressable
@@ -228,7 +244,7 @@ const styles = StyleSheet.create({
   ombre: { position: 'absolute', backgroundColor: OMBRE },
   coin: { position: 'absolute', backgroundColor: '#FFFFFF', zIndex: 5 },
   // .scan-ui-layer : texte centré sur tout l'écran
-  couche: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
+  couche: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10 },
   // .scan-text
   texte: {
     fontFamily: police.semiGras,
@@ -239,6 +255,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
+  lampe: { left: undefined, right: 16 },
   // .back-btn
   retour: {
     position: 'absolute',
