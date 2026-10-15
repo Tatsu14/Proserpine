@@ -5,7 +5,8 @@
  */
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/contexts/auth';
@@ -82,7 +83,7 @@ export default function HistoriqueScreen() {
           </>
         ) : items.length === 0 ? (
           <View style={styles.vide}>
-            <Icone nom="history" taille={48} couleur={couleurs.texteDiscret} />
+            <Icone nom="history" taille={24} couleur={couleurs.texteDiscret} />
             <Text style={styles.videTexte}>Votre historique est vide.</Text>
           </View>
         ) : (
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
   // .header-title
   titre: { fontFamily: police.noir, fontSize: tailleTexte.xl2, lineHeight: 24, color: couleurs.texte },
   // .history-list-container + .history-item
-  liste: { padding: 16, gap: 12 },
+  liste: { padding: 16 },
   ligne: {
     flexDirection: 'row',
     alignItems: 'center',

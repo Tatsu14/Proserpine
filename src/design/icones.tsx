@@ -32,11 +32,14 @@ type Props = {
 };
 
 // Quelques icônes de Material Symbols n'existent pas sous le même nom dans MaterialIcons.
-const EQUIVALENTS: Record<string, string> = {
-  package_2: 'inventory_2',
-};
+const EQUIVALENTS: Record<string, string> = {};
 
 // Versions contour disponibles (MaterialCommunityIcons).
+// Icônes qui n'existent que dans MaterialCommunityIcons (nom du site -> nom MDI).
+const COMMUNAUTE: Record<string, string> = {
+  package_2: 'package-variant-closed',
+};
+
 const CONTOURS: Record<string, string> = {
   home: 'home-outline',
   menu_book: 'book-open-page-variant-outline',
@@ -44,6 +47,9 @@ const CONTOURS: Record<string, string> = {
 };
 
 export function Icone({ nom, taille = 24, couleur, contour }: Props) {
+  if (COMMUNAUTE[nom]) {
+    return <MaterialCommunityIcons name={COMMUNAUTE[nom] as NomCommunity} size={taille} color={couleur} />;
+  }
   if (contour && CONTOURS[nom]) {
     return <MaterialCommunityIcons name={CONTOURS[nom] as NomCommunity} size={taille} color={couleur} />;
   }

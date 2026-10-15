@@ -8,7 +8,8 @@
  *  - invalide : bordure rouge, fond rouge très léger, message d'erreur dessous.
  */
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Text } from '@/components/ui/texte';
 
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 

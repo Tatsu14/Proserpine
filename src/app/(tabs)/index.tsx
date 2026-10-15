@@ -5,7 +5,8 @@
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 
 import { EnteteSombre } from '@/components/ui/entete-sombre';
 import { Icone } from '@/design/icones';

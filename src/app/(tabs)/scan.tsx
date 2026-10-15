@@ -14,7 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { Stack, useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, Vibration, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, Vibration, View, type LayoutChangeEvent } from 'react-native';
+import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUi } from '@/components/ui/ui-provider';

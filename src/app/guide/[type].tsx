@@ -5,7 +5,8 @@
  * conseil Intradel. Écran plein, sans barre de navigation.
  */
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TexteRiche } from '@/components/ui/texte-riche';
@@ -17,7 +18,7 @@ import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 function Ligne({ icone, couleur, texte, gras }: { icone: string; couleur: string; texte: string; gras?: boolean }) {
   return (
     <View style={styles.ligne}>
-      <Icone nom={icone} taille={20} couleur={couleur} />
+      <Icone nom={icone} taille={24} couleur={couleur} />
       <TexteRiche
         texte={texte}
         style={[styles.ligneTexte, gras && { fontFamily: police.gras, color: couleurs.statutDanger }]}
@@ -61,7 +62,7 @@ export default function GuideDetailScreen() {
           <Icone nom="arrow_back" taille={24} couleur={cat.textColor} />
         </Pressable>
         <View style={{ marginTop: 16, marginBottom: 8 }}>
-          <Icone nom={cat.icon} taille={64} couleur={cat.textColor} />
+          <Icone nom={cat.icon} taille={24} couleur={cat.textColor} />
         </View>
         <Text style={[styles.titre, { color: cat.textColor }]}>{cat.title}</Text>
       </View>

@@ -5,7 +5,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GUIDE, GUIDE_ORDER } from '@/constants/guide';
@@ -56,7 +57,7 @@ export default function GuideScreen() {
                     style={StyleSheet.absoluteFill}
                   />
                   <View style={{ marginBottom: 16 }}>
-                    <Icone nom={cat.icon} taille={48} couleur={cat.textColor} />
+                    <Icone nom={cat.icon} taille={24} couleur={cat.textColor} />
                   </View>
                   <Text style={[styles.carteTitre, { color: cat.textColor }]}>{cat.cardTitle}</Text>
                   <Text style={[styles.carteDesc, { color: cat.textColor }]}>{cat.cardDesc}</Text>

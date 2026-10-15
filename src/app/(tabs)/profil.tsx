@@ -8,7 +8,8 @@
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 
 import { EnteteBoutonDanger, EnteteSombre } from '@/components/ui/entete-sombre';
 import { useUi } from '@/components/ui/ui-provider';

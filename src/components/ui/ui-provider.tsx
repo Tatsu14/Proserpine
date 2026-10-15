@@ -10,7 +10,8 @@
  *          ui.confirmer({ titre, message, confirmer, annuler, onConfirmer });
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 
 import { BoutonPrimaire, BoutonSecondaire } from '@/components/ui/boutons';
 import { couleurs, ombre, police, rayon, tailleTexte } from '@/design/tokens';

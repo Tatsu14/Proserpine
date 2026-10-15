@@ -5,7 +5,8 @@
  */
 import { Image } from 'expo-image';
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { couleurs, ombre, police, rayon, tailleTexte } from '@/design/tokens';

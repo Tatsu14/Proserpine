@@ -5,7 +5,8 @@
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 
 import { BoutonGoogle, BoutonPrimaire, SeparateurOu } from '@/components/ui/boutons';
 import { CarteAuth, ErreurAuth, LiensAuth } from '@/components/ui/carte-auth';

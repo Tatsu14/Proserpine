@@ -3,7 +3,8 @@
  * version en ligne (css/components.css et css/style.css), valeur pour valeur.
  */
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Text } from '@/components/ui/texte';
 import Svg, { Path } from 'react-native-svg';
 
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';

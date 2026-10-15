@@ -3,7 +3,8 @@
  * message, bouton « Retour ». Atteint depuis « Modifier mes informations » et « Paramètres ».
  */
 import { Stack, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 
 import { BoutonPrimaire } from '@/components/ui/boutons';
 import { Icone } from '@/design/icones';
@@ -17,7 +18,7 @@ export default function IndisponibleScreen() {
       {/* .unavailable-container */}
       <View style={styles.centre}>
         <View style={{ marginBottom: 16 }}>
-          <Icone nom="engineering" taille={64} couleur={couleurs.marque} />
+          <Icone nom="engineering" taille={24} couleur={couleurs.marque} />
         </View>
         <Text style={styles.titre}>Fonctionnalité en cours de développement</Text>
         <Text style={styles.texte}>Cette fonctionnalité sera disponible prochainement. Merci de votre patience.</Text>
@@ -34,7 +35,8 @@ export default function IndisponibleScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: couleurs.fondCarte },
-  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  // En ligne, le contenu reste en haut de l'écran (la hauteur de .unavailable-container n'est pas fixée).
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', padding: 24 },
   // .text-h2 (16 px, 800) · .text-body (13 px, atténué)
   titre: { fontFamily: police.extraGras, fontSize: tailleTexte.lg, color: couleurs.texte, textAlign: 'center', marginBottom: 8 },
   texte: { fontFamily: police.normal, fontSize: tailleTexte.base, lineHeight: 19.5, color: couleurs.texteAttenue, textAlign: 'center', marginBottom: 24 },

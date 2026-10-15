@@ -5,7 +5,8 @@
  */
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BoutonPrimaire, BoutonSecondaire } from '@/components/ui/boutons';
@@ -219,7 +220,7 @@ export default function RechercheScreen() {
             {enChargement && resultats.length === 0 ? <Squelette /> : null}
             {!enChargement && affiches.length === 0 ? (
               <View style={styles.aucun}>
-                <Icone nom="search_off" taille={48} couleur={couleurs.texteDiscret} />
+                <Icone nom="search_off" taille={24} couleur={couleurs.texteDiscret} />
                 <Text style={styles.aucunTexte}>Aucun produit trouvé pour cette recherche.</Text>
                 <BoutonPrimaire style={{ marginTop: 16 }} onPress={() => router.push('/(tabs)/scan')}>
                   Scanner un produit

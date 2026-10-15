@@ -3,7 +3,8 @@
  *   {{DANGEREUX}} → pastille rouge (`.badge-danger`)
  *   **gras**      → texte en gras (`<strong>`)
  */
-import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
+import { Text } from '@/components/ui/texte';
 
 import { couleurs, police } from '@/design/tokens';
 
