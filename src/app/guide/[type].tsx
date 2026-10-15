@@ -48,7 +48,7 @@ export default function GuideDetailScreen() {
   const surClair = cat.textColor !== '#FFFFFF';
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: cat.color }} contentContainerStyle={{ flexGrow: 1 }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1, backgroundColor: cat.color }} contentContainerStyle={{ flexGrow: 1 }}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* .detail-header */}
@@ -124,7 +124,8 @@ export default function GuideDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  entete: { paddingHorizontal: 16, paddingBottom: 40, alignItems: 'center', justifyContent: 'center' },
+  // Le bandeau est positionné : il se dessine au-dessus de la feuille blanche (son bas reste droit, comme en ligne).
+  entete: { paddingHorizontal: 16, paddingBottom: 40, alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 2 },
   retour: { position: 'absolute', left: 16, width: 40, height: 40, borderRadius: rayon.sm, alignItems: 'center', justifyContent: 'center', zIndex: 5 },
   titre: { fontFamily: police.noir, fontSize: tailleTexte.xl2, lineHeight: 24, textAlign: 'center' },
   contenu: {

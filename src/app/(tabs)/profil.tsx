@@ -103,7 +103,7 @@ export default function ProfilScreen() {
   const indisponible = () => router.push('/indisponible');
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
       <EnteteSombre
         action={
           <EnteteBoutonDanger onPress={deconnecter}>

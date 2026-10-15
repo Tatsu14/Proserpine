@@ -24,7 +24,7 @@ export default function GuideScreen() {
   const largeurCarte = largeur > 0 ? (largeur - 32 - ECART) / 2 : 0;
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
       {/* .guide-header */}
       <View style={[styles.entete, { paddingTop: Math.max(16, marges.top) }]}>
         <Text style={styles.titre}>Guide de tri</Text>

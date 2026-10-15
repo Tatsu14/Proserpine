@@ -194,7 +194,7 @@ export default function RechercheScreen() {
         </View>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.resultats} keyboardShouldPersistTaps="handled">
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={styles.resultats} keyboardShouldPersistTaps="handled">
         {mode === 'recents' ? (
           <View>
             {/* Le titre disparaît quand il n'y a aucun historique (.recent-no-history) */}

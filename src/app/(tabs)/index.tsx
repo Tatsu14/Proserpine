@@ -128,7 +128,7 @@ export default function AccueilScreen() {
   );
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
+    <ScrollView showsVerticalScrollIndicator={false} style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
       <EnteteSombre>
         <View style={styles.salutation}>
           <Text style={styles.salutationLabel}>{salutation.label}</Text>

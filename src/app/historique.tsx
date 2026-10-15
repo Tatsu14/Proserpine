@@ -71,7 +71,7 @@ export default function HistoriqueScreen() {
         <Text style={styles.titre}>Historique complet</Text>
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.liste}>
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }} contentContainerStyle={styles.liste}>
         {erreur ? (
           <Text style={styles.erreur}>Erreur lors du chargement de l'historique.</Text>
         ) : items === null ? (

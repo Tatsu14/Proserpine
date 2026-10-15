@@ -27,7 +27,7 @@ type Props = {
   nom: string;
   taille?: number;
   couleur?: string;
-  /** Version contour (non remplie) de l'icône, si elle existe. */
+  /** Version contour (par défaut, comme le site) ; `false` pour l'icône pleine (onglet actif). */
   contour?: boolean;
 };
 
@@ -44,9 +44,21 @@ const CONTOURS: Record<string, string> = {
   home: 'home-outline',
   menu_book: 'book-open-page-variant-outline',
   account_circle: 'account-circle-outline',
+  check_circle: 'check-circle-outline',
+  cancel: 'close-circle-outline',
+  warning: 'alert-outline',
+  lightbulb: 'lightbulb-outline',
+  delete: 'delete-outline',
+  description: 'file-document-outline',
+  edit_document: 'file-document-edit-outline',
+  info: 'information-outline',
+  cloud_off: 'cloud-off-outline',
+  help: 'help-circle-outline',
+  touch_app: 'gesture-tap',
+  recycling: 'recycle',
 };
 
-export function Icone({ nom, taille = 24, couleur, contour }: Props) {
+export function Icone({ nom, taille = 24, couleur, contour = true }: Props) {
   if (COMMUNAUTE[nom]) {
     return <MaterialCommunityIcons name={COMMUNAUTE[nom] as NomCommunity} size={taille} color={couleur} />;
   }
