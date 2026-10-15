@@ -1,34 +1,39 @@
-// Palette de marque Proserpine — portée depuis css/tokens.css de la version web,
-// pour garder une identité visuelle cohérente entre le web et le natif.
+// Palette de marque Proserpine.
+// Les valeurs ne sont PLUS écrites ici : elles viennent de `src/design/tokens.ts`,
+// la source unique du design (reprise de css/tokens.css de ProserpineV2).
+// Ce fichier garde les anciens noms (Colors.brandPrimary…) pour que les écrans
+// existants continuent de fonctionner pendant la refonte.
+import { couleurs } from '@/design/tokens';
+
 export const Colors = {
-  brandDarkest: '#071E12',
-  brandPrimary: '#00CC66',
-  brandPrimaryDark: '#00994C',
-  brandPrimaryLight: 'rgba(0, 204, 102, 0.10)',
+  brandDarkest: couleurs.marqueSombre,
+  brandPrimary: couleurs.marque,
+  brandPrimaryDark: couleurs.marqueFoncee,
+  brandPrimaryLight: couleurs.marqueClaire,
 
-  bgApp: '#E2E8F0',
-  bgGray: '#F3F5F4',
-  bgSurface: '#FFFFFF',
+  bgApp: couleurs.fondApp,
+  bgGray: couleurs.fondGris,
+  bgSurface: couleurs.fondCarte,
 
-  textDark: '#0F1713',
-  textMuted: '#596B62',
-  textLight: '#A4B5AC',
-  textOnDark: '#FFFFFF',
+  textDark: couleurs.texte,
+  textMuted: couleurs.texteAttenue,
+  textLight: couleurs.texteDiscret,
+  textOnDark: couleurs.texteSurSombre,
 
-  borderDefault: '#E4EBE6',
+  borderDefault: couleurs.bordure,
 
-  statusGood: '#27AE60',
-  statusWarning: '#FF9800',
-  statusDanger: '#E74C3C',
+  statusGood: couleurs.statutBon,
+  statusWarning: couleurs.statutAttention,
+  statusDanger: couleurs.statutDanger,
 
   // Catégories du guide de tri
-  guidePmc: '#3498DB',
-  guidePaper: '#F1C40F',
-  guidePaperText: '#2C3E50',
-  guideOrganic: '#27AE60',
-  guideGlass: '#95A5A6',
-  guideResidual: '#4a4a4a',
-  guideDanger: '#E74C3C',
+  guidePmc: couleurs.bacPmc,
+  guidePaper: couleurs.bacPapier,
+  guidePaperText: couleurs.bacPapierTexte,
+  guideOrganic: couleurs.bacOrganique,
+  guideGlass: couleurs.bacVerre,
+  guideResidual: couleurs.bacResiduel,
+  guideDanger: couleurs.bacDanger,
 } as const;
 
 // Couleur d'accent associée à une classe d'éco-score.
