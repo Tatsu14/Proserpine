@@ -43,20 +43,30 @@ const FOND_BAC: Record<string, string> = {
 /** Un bac et la liste de ses éléments (ex. « Film plastique », « Étui en carton »). */
 export type Bac = { categorie: string; elements: string[] };
 
-/** Origine de la consigne : lue sur l'emballage, déduite de la catégorie, ou absente. */
-export type Fiabilite = 'lu' | 'deduit' | 'aucune';
+/**
+ * Origine de la consigne :
+ *  - 'lu'     : lue sur l'emballage (donnée d'Open Food Facts)
+ *  - 'deduit' : déduite de la catégorie du produit (à vérifier)
+ *  - 'choisi' : la matière a été choisie par l'utilisateur lui-même
+ *  - 'aucune' : on ne sait pas
+ */
+export type Fiabilite = 'lu' | 'deduit' | 'choisi' | 'aucune';
 
-/** Étiquette « Lu sur l'emballage » / « Déduit · à vérifier » à droite du titre. */
+// Apparence de l'étiquette selon l'origine (icône, texte, fond, couleur du texte).
+const ETIQUETTES: Record<Exclude<Fiabilite, 'aucune'>, { icone: string; texte: string; fond: string; couleur: string }> = {
+  lu: { icone: 'check_circle', texte: 'Lu sur l’emballage', fond: couleurs.statutBonFond, couleur: '#00663A' },
+  deduit: { icone: 'info', texte: 'Déduit · à vérifier', fond: couleurs.statutAttentionFond, couleur: '#8A5300' },
+  choisi: { icone: 'touch_app', texte: 'Votre choix', fond: couleurs.bordure, couleur: couleurs.texteAttenue },
+};
+
+/** Étiquette d'origine de la consigne, à droite du titre. */
 export function EtiquetteFiabilite({ fiabilite }: { fiabilite: Fiabilite }) {
   if (fiabilite === 'aucune') return null;
-  const lu = fiabilite === 'lu';
-  const texteCouleur = lu ? '#00663A' : '#8A5300';
+  const e = ETIQUETTES[fiabilite];
   return (
-    <View style={[styles.etiquette, { backgroundColor: lu ? couleurs.statutBonFond : couleurs.statutAttentionFond }]}>
-      <Icone nom={lu ? 'check_circle' : 'info'} taille={18} couleur={texteCouleur} />
-      <Text style={[styles.etiquetteTexte, { color: texteCouleur }]}>
-        {lu ? 'Lu sur l’emballage' : 'Déduit · à vérifier'}
-      </Text>
+    <View style={[styles.etiquette, { backgroundColor: e.fond }]}>
+      <Icone nom={e.icone} taille={18} couleur={e.couleur} />
+      <Text style={[styles.etiquetteTexte, { color: e.couleur }]}>{e.texte}</Text>
     </View>
   );
 }
@@ -89,15 +99,18 @@ export function SectionTri({
   bacs,
   fiabilite,
   consigneSecurite,
-  indetermine,
+  separation,
+  onChanger,
   onOuvrirGuide,
 }: {
   bacs: Bac[];
   fiabilite: Fiabilite;
   /** Texte de sécurité (produit dangereux) : affiché sous les cartes quand il existe. */
   consigneSecurite?: string | null;
-  /** Texte honnête quand l'emballage est impossible à déterminer. */
-  indetermine?: string | null;
+  /** Message précis « Retirez… » : seulement si une pièce collée va dans un autre bac. */
+  separation?: string | null;
+  /** Si fourni, affiche « Changer de matière » (cas où la matière a été choisie par l'utilisateur). */
+  onChanger?: () => void;
   onOuvrirGuide: (categorie: string) => void;
 }) {
   return (
@@ -107,18 +120,23 @@ export function SectionTri({
         <EtiquetteFiabilite fiabilite={fiabilite} />
       </View>
 
-      {bacs.length > 0 ? (
-        bacs.map((b) => <CarteBac key={b.categorie} bac={b} onPress={() => onOuvrirGuide(b.categorie)} />)
-      ) : (
-        // Aucune consigne : on le dit honnêtement, sans inventer. (Le choix de la matière
-        // en deux touches viendra dans l'étape suivante de la fiche.)
+      {separation ? (
         <View style={styles.avis}>
-          <Icone nom="info" taille={22} couleur={couleurs.texteAttenue} />
-          <Text style={styles.avisTexte}>
-            {indetermine ?? 'Nous n’avons pas assez d’informations sur l’emballage de ce produit pour vous dire où le jeter.'}
-          </Text>
+          <Icone nom="content_cut" taille={22} couleur={couleurs.texteAttenue} />
+          <Text style={styles.avisTexte}>{separation}</Text>
         </View>
-      )}
+      ) : null}
+
+      {bacs.map((b) => (
+        <CarteBac key={b.categorie} bac={b} onPress={() => onOuvrirGuide(b.categorie)} />
+      ))}
+
+      {onChanger ? (
+        <Pressable accessibilityRole="button" onPress={onChanger} style={styles.lienChanger}>
+          <Icone nom="edit" taille={18} couleur="#00663A" />
+          <Text style={styles.lienChangerTexte}>Changer de matière</Text>
+        </Pressable>
+      ) : null}
 
       {consigneSecurite ? (
         <View style={styles.avis}>
@@ -200,4 +218,6 @@ const styles = StyleSheet.create({
   },
   noteDeduitTexte: { flex: 1, fontFamily: police.normal, fontSize: tailleTexte.base, color: '#6B4300', lineHeight: 18 },
   gras: { fontFamily: police.gras },
+  lienChanger: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: 4 },
+  lienChangerTexte: { fontFamily: police.extraGras, fontSize: tailleTexte.base, color: '#00663A' },
 });

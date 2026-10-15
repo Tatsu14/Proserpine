@@ -13,15 +13,23 @@
  *   6. source des données
  *
  * La logique de données (cache d'abord, revalidation réseau, historique) est reprise
- * de la version précédente : seul l'AFFICHAGE change. Étapes suivantes prévues :
- * message précis « séparez… », choix de la matière quand rien n'est connu, feuille
- * « Pourquoi cette note ? », conseils par bac.
+ * de la version précédente : seul l'AFFICHAGE change.
+ *
+ * Cas particuliers gérés (étape 2) :
+ *   - message précis « Retirez… » seulement si une pièce collée va dans un autre bac
+ *     (src/services/separation.ts) ;
+ *   - consigne déduite : étiquette « Déduit · à vérifier » + note explicative ;
+ *   - emballage inconnu : choix de la matière (étiquette « Votre choix ») ;
+ *   - hors connexion : bannière ; produit introuvable / chargement : écrans dédiés.
+ *
+ * Étape suivante : feuille « Pourquoi cette note ? », conseils propres à chaque bac.
  */
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { BandeauHorsLigne, BlocIndice, BoiteConseil, EnteteFiche, Source } from '@/components/fiche/blocs-info';
+import { ChoixMatiere, type Matiere } from '@/components/fiche/choix-matiere';
 import { EcranChargement, EcranIntrouvable } from '@/components/fiche/ecrans-etat';
 import { SectionTri, type Bac, type Fiabilite } from '@/components/fiche/blocs-tri';
 import { scoreColor } from '@/constants/colors';
@@ -31,6 +39,7 @@ import { rechercherProduitParEAN } from '@/services/api';
 import { ecrireProduitCache, lireProduitCache } from '@/services/cache';
 import { calculerEcoScore } from '@/services/ecoscore';
 import { enregistrerScan } from '@/services/historique';
+import { messageSeparation } from '@/services/separation';
 import { analyserEmballage } from '@/services/tri';
 
 type Statut = 'chargement' | 'introuvable' | 'ok';
@@ -80,6 +89,8 @@ export default function ProduitScreen() {
   const [score, setScore] = useState<any>(null);
   const [tri, setTri] = useState<any>(null);
   const [nonRafraichi, setNonRafraichi] = useState(false);
+  // Matière choisie par l'utilisateur quand l'emballage est inconnu (non conservée entre deux visites).
+  const [matiereChoisie, setMatiereChoisie] = useState<Matiere | null>(null);
   // Incrémenté par « Réessayer » pour relancer le chargement.
   const [tentative, setTentative] = useState(0);
 
@@ -174,17 +185,25 @@ export default function ProduitScreen() {
   }
 
   // ----- Données de la fiche -----
-  const bacs = grouperParBac(tri.composants ?? []);
+  const bacsConnus = grouperParBac(tri.composants ?? []);
 
   // D'où vient la consigne ? Lue sur l'emballage, déduite de la catégorie, ou absente.
   // Jamais de consigne déduite présentée comme un fait.
-  const fiabilite: Fiabilite = tri.deduit ? 'deduit' : bacs.length > 0 ? 'lu' : 'aucune';
+  const fiabiliteConnue: Fiabilite = tri.deduit ? 'deduit' : bacsConnus.length > 0 ? 'lu' : 'aucune';
+
+  // Quand l'application ne sait rien, l'utilisateur peut choisir la matière lui-même.
+  // La consigne obtenue est alors étiquetée « Votre choix ».
+  const choix = fiabiliteConnue === 'aucune' ? matiereChoisie : null;
+  const bacs: Bac[] = choix ? [{ categorie: choix.categorie, elements: [choix.nom] }] : bacsConnus;
+  const fiabilite: Fiabilite = choix ? 'choisi' : fiabiliteConnue;
 
   const estDanger = bacs.some((b) => b.categorie === 'danger');
   // Texte de sécurité (Recyparc) : affiché car il compte plus que les cartes.
   const consigneSecurite = estDanger ? tri.instructions : null;
   // Emballage impossible à déterminer : tri.js fournit alors un texte honnête.
   const indetermine = tri.indetermine ? tri.instructions : null;
+  // Message précis « Retirez… » : uniquement pour une consigne lue ou déduite, jamais pour un choix.
+  const separation = fiabilite === 'lu' || fiabilite === 'deduit' ? messageSeparation(bacs) : null;
   // Le conseil de rinçage ne concerne ni le Recyparc ni l'absence de consigne.
   const afficherConseil = fiabilite !== 'aucune' && !(estDanger && bacs.length === 1);
 
@@ -199,13 +218,22 @@ export default function ProduitScreen() {
       <ScrollView contentContainerStyle={styles.contenu} showsVerticalScrollIndicator={false}>
         {nonRafraichi ? <BandeauHorsLigne /> : null}
 
-        <SectionTri
-          bacs={bacs}
-          fiabilite={fiabilite}
-          consigneSecurite={consigneSecurite}
-          indetermine={indetermine}
-          onOuvrirGuide={(categorie) => router.push(`/guide/${categorie}`)}
-        />
+        {fiabilite === 'aucune' ? (
+          <ChoixMatiere
+            indetermine={indetermine}
+            onChoisir={setMatiereChoisie}
+            onGuide={() => router.push('/(tabs)/guide')}
+          />
+        ) : (
+          <SectionTri
+            bacs={bacs}
+            fiabilite={fiabilite}
+            consigneSecurite={consigneSecurite}
+            separation={separation}
+            onChanger={choix ? () => setMatiereChoisie(null) : undefined}
+            onOuvrirGuide={(categorie) => router.push(`/guide/${categorie}`)}
+          />
+        )}
 
         {afficherConseil ? <BoiteConseil texte={CONSEIL_GENERAL} /> : null}
 
