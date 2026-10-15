@@ -21,8 +21,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "be.proserpine.app",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -34,7 +33,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Proserpine utilise la caméra pour scanner les codes-barres des produits."
+          "cameraPermission": "Proserpine utilise la caméra pour scanner les codes-barres des produits.",
+          "recordAudioAndroid": false
         }
       ],
       [
