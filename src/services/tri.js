@@ -1,3 +1,5 @@
+import { deduireDepuisPackagings, deduireDepuisCategorie } from './deduction-emballage.js';
+
 export const CATEGORIES = {
     pmc:      { title: 'Sac bleu (PMC)',     icon: 'recycling',   cssClass: 'bg-guide-pmc',      iconColor: '#FFF',                          guideType: 'pmc' },
     paper:    { title: 'Papiers & cartons',  icon: 'description', cssClass: 'bg-guide-paper',    iconColor: 'var(--color-guide-paper-text)', guideType: 'paper' },
@@ -22,7 +24,8 @@ export const CATEGORIES = {
 // aérosols restent acceptés au PMC). À enrichir plus tard avec les pictogrammes CLP
 // et le bouchon de sécurité-enfant, quand des signaux de données fiables existeront.
 const REGLES_DANGER = [
-    { regex: /\bcolle[s]?\b|\bglue[s]?\b|super[\s-]?glue|cyanoacrylate|adh[ée]sif\s+(?:n[ée]opr[èe]ne|fort)/i, motif: 'colle' },
+    // « colle de poisson » = gélatine alimentaire (pas un produit dangereux) → exclue par lookahead.
+    { regex: /\bcolle[s]?\b(?!\s+(?:de|du|d')\s*poisson)|\bglue[s]?\b|super[\s-]?glue|cyanoacrylate|adh[ée]sif\s+(?:n[ée]opr[èe]ne|fort)/i, motif: 'colle' },
     { regex: /peinture|\bpaint[s]?\b|vernis|\bvarnish\b|white[\s-]?spirit|\bsolvant[s]?\b|\bsolvent[s]?\b|ac[ée]tone|diluant|d[ée]capant|t[ée]r[ée]benthine|laque\s+(?:bois|m[ée]tal|cellulosique)/i, motif: 'peinture ou solvant' },
     { regex: /d[ée]boucheur|d[ée]bouche[\s-]?[ée]vier|soude\s+caustique|acide\s+(?:chlorhydrique|sulfurique|nitrique)|drain[\s-]?cleaner/i, motif: 'produit corrosif' },
     { regex: /insecticide|pesticide|herbicide|raticide|fongicide|anti[\s-]?(?:moustique|mouche|fourmi|nuisible|rongeur)|weed[\s-]?killer/i, motif: 'produit biocide' },
@@ -50,6 +53,10 @@ const REGLES = [
     { regex: /frigolite|polystyr[eè]ne\s+expans|\beps\b|styrofoam/i, categorie: 'pmc' },
     // Films multicouches / aluminisés → Résiduel
     { regex: /film\s+aluminisé|multi[\s-]?couche[s]?|complexe\s+plast/i, categorie: 'residual' },
+
+    // Sachet / pochette / sac EN PAPIER ou carton → Papier (avant « sachet » générique → PMC).
+    // Le lookahead négatif laisse « sachet papier plastifié » à la règle plastique.
+    { regex: /(?:sachet|pochette|sac)[s]?\s+(?:en\s+)?(?:papier|carton|kraft)(?!.*plast)/i, categorie: 'paper' },
 
     // Plastiques → PMC
     { regex: /plastique|polypropyl[eè]ne|\bpp\b|poly[eé]thyl[eè]ne|\bpe\b|\bpet\b|\bhdpe\b|\bpehd\b|\bpvc\b|polyester|polystyr[eè]ne|film\s+plast|sachet|sac\s+plast|flacon\s+plast|bouteille\s+plast|barquette\s+plast|pot\s+plast|opercule\s+plast|couvercle\s+plast|bouchon\s+plast|bidon|pochette/i, categorie: 'pmc' },
@@ -161,8 +168,34 @@ function simplifierDescription(desc) {
         .trim();
 }
 
+// Découpe un texte d'emballage en fragments : retours à la ligne, « ; » ET virgules.
+// Open Food Facts écrit souvent « bouteille en verre, bouchon en métal » sur UNE ligne :
+// sans découpage à la virgule, la règle « métal » (prioritaire sur « verre ») classait
+// toute la ligne au sac bleu. Les virgules entre parenthèses (ex. « plastique (PET, PP) »)
+// ne séparent PAS : elles précisent un même composant.
+function decouperFragments(texte) {
+    const fragments = [];
+    let courant = '';
+    let profondeur = 0;
+
+    for (const car of texte) {
+        if (car === '(') profondeur++;
+        else if (car === ')' && profondeur > 0) profondeur--;
+
+        const estSeparateur = (car === '\n' || car === '\r' || car === ';' || car === ',') && profondeur === 0;
+        if (estSeparateur) {
+            fragments.push(courant);
+            courant = '';
+        } else {
+            courant += car;
+        }
+    }
+    fragments.push(courant);
+    return fragments;
+}
+
 function extraireComposants(texte) {
-    const lignes = texte.split(/[\n\r;]+/);
+    const lignes = decouperFragments(texte);
     const composants = [];
 
     for (const ligne of lignes) {
@@ -284,6 +317,13 @@ export function analyserEmballage(donneesBrutes) {
         }
     }
 
+    // Priorité 2 bis (couche 0) : champ structuré `packagings` d'OFF (forme + matériau de
+    // chaque élément). Donnée lue, pas déduite → plus fine que les tags, d'où sa place avant eux.
+    const composantsStructures = deduireDepuisPackagings(donneesBrutes);
+    if (composantsStructures.length > 0) {
+        return { composants: composantsStructures, instructions: genererInstructions(composantsStructures) };
+    }
+
     // Priorité 3 : tags normalisés
     const composantsTags = analyserDepuisTags(donneesBrutes);
     if (composantsTags.length > 0) {
@@ -297,6 +337,26 @@ export function analyserEmballage(donneesBrutes) {
         if (composants.length > 0) {
             return { composants, instructions: genererInstructions(composants) };
         }
+    }
+
+    // Priorité 5 (couche 1) : plus aucune donnée d'emballage → on DÉDUIT l'emballage typique
+    // d'après la catégorie du produit. Résultat marqué `deduit: true` : jamais présenté comme
+    // un fait. Si plusieurs emballages sont plausibles, on ne tranche pas (`indetermine`).
+    const deduction = deduireDepuisCategorie(donneesBrutes);
+    if (deduction) {
+        if (deduction.options) {
+            const choix = deduction.options.map(o => o.description.toLowerCase()).join(' ou ');
+            return {
+                composants: [],
+                instructions: `Emballage impossible à déterminer pour ce type de produit (${deduction.nom}) : selon le conditionnement, ce peut être ${choix}. Vérifiez l'emballage.`,
+                indetermine: { nom: deduction.nom, options: deduction.options },
+            };
+        }
+        return {
+            composants: deduction.composants,
+            instructions: `Emballage déduit de la catégorie du produit (${deduction.nom}), à vérifier sur l'emballage. ${genererInstructions(deduction.composants)}`,
+            deduit: true,
+        };
     }
 
     return { composants: [], instructions: null };
