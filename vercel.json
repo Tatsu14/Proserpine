@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npx expo export --platform web",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/produit/:ean", "destination": "/produit/[ean].html" },
+    { "source": "/guide/:type", "destination": "/guide/[type].html" }
+  ]
+}
