@@ -22,7 +22,8 @@
  *   - emballage inconnu : choix de la matière (étiquette « Votre choix ») ;
  *   - hors connexion : bannière ; produit introuvable / chargement : écrans dédiés.
  *
- * Étape suivante : feuille « Pourquoi cette note ? », conseils propres à chaque bac.
+ * Étape 3 : feuille « Pourquoi cette note ? » (détails du score + pays de fabrication,
+ * ouverte à la demande) et conseils propres à chaque bac (src/services/conseils.ts).
  */
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -31,6 +32,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { BandeauHorsLigne, BlocIndice, BoiteConseil, EnteteFiche, Source } from '@/components/fiche/blocs-info';
 import { ChoixMatiere, type Matiere } from '@/components/fiche/choix-matiere';
 import { EcranChargement, EcranIntrouvable } from '@/components/fiche/ecrans-etat';
+import { FeuilleIndice } from '@/components/fiche/feuille-indice';
 import { SectionTri, type Bac, type Fiabilite } from '@/components/fiche/blocs-tri';
 import { scoreColor } from '@/constants/colors';
 import { useAuth } from '@/contexts/auth';
@@ -39,15 +41,11 @@ import { rechercherProduitParEAN } from '@/services/api';
 import { ecrireProduitCache, lireProduitCache } from '@/services/cache';
 import { calculerEcoScore } from '@/services/ecoscore';
 import { enregistrerScan } from '@/services/historique';
+import { conseilPour } from '@/services/conseils';
 import { messageSeparation } from '@/services/separation';
 import { analyserEmballage } from '@/services/tri';
 
 type Statut = 'chargement' | 'introuvable' | 'ok';
-
-// Conseil général validé par Monsieur (inutile de rincer un emballage vide).
-// Les conseils propres à chaque bac viendront à l'étape suivante.
-const CONSEIL_GENERAL =
-  'Inutile de rincer un emballage vide : il doit seulement ne pas être trop souillé. S’il reste beaucoup de produit, videz-le d’abord.';
 
 // Nom lisible de la base d'où viennent les données.
 const NOMS_SOURCES: Record<string, string> = {
@@ -91,6 +89,8 @@ export default function ProduitScreen() {
   const [nonRafraichi, setNonRafraichi] = useState(false);
   // Matière choisie par l'utilisateur quand l'emballage est inconnu (non conservée entre deux visites).
   const [matiereChoisie, setMatiereChoisie] = useState<Matiere | null>(null);
+  // Feuille « Pourquoi cette note ? » ouverte ou non.
+  const [feuilleOuverte, setFeuilleOuverte] = useState(false);
   // Incrémenté par « Réessayer » pour relancer le chargement.
   const [tentative, setTentative] = useState(0);
 
@@ -204,8 +204,9 @@ export default function ProduitScreen() {
   const indetermine = tri.indetermine ? tri.instructions : null;
   // Message précis « Retirez… » : uniquement pour une consigne lue ou déduite, jamais pour un choix.
   const separation = fiabilite === 'lu' || fiabilite === 'deduit' ? messageSeparation(bacs) : null;
-  // Le conseil de rinçage ne concerne ni le Recyparc ni l'absence de consigne.
-  const afficherConseil = fiabilite !== 'aucune' && !(estDanger && bacs.length === 1);
+  // Conseil de tri : général pour plusieurs bacs, propre au bac s'il n'y en a qu'un,
+  // et aucun pour le Recyparc seul ou en l'absence de consigne (textes provisoires).
+  const conseil = fiabilite !== 'aucune' ? conseilPour(bacs) : null;
 
   // Indice d'impact : null = « Non évalué » (jamais une note par défaut).
   const evalue = score && score.evalue !== false && score.score !== null;
@@ -235,12 +236,24 @@ export default function ProduitScreen() {
           />
         )}
 
-        {afficherConseil ? <BoiteConseil texte={CONSEIL_GENERAL} /> : null}
+        {conseil ? <BoiteConseil texte={conseil} /> : null}
 
-        <BlocIndice note={note} palier={score?.label ?? ''} couleur={scoreColor(score?.scoreClass ?? 'unknown')} />
+        <BlocIndice
+          note={note}
+          palier={score?.label ?? ''}
+          couleur={scoreColor(score?.scoreClass ?? 'unknown')}
+          onPourquoi={() => setFeuilleOuverte(true)}
+        />
 
         <Source nom={NOMS_SOURCES[produit.source] ?? String(produit.source ?? 'Open Food Facts')} />
       </ScrollView>
+
+      <FeuilleIndice
+        visible={feuilleOuverte}
+        onFermer={() => setFeuilleOuverte(false)}
+        facteurs={score?.facteurs ?? []}
+        paysOrigine={produit.pays_origine}
+      />
     </View>
   );
 }

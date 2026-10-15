@@ -100,18 +100,37 @@ function Anneau({ note, couleur }: { note: number | null; couleur: string }) {
  * Bloc compact « Indice d'impact », placé en bas : un plus, pas l'objet principal de la fiche.
  * `note` vaut null quand le produit n'est PAS évalué (jamais de valeur par défaut présentée comme un résultat).
  */
-export function BlocIndice({ note, palier, couleur }: { note: number | null; palier: string; couleur: string }) {
+export function BlocIndice({
+  note,
+  palier,
+  couleur,
+  onPourquoi,
+}: {
+  note: number | null;
+  palier: string;
+  couleur: string;
+  /** Ouvre la feuille « Pourquoi cette note ? ». Le lien n'existe que si le produit est évalué. */
+  onPourquoi?: () => void;
+}) {
   const evalue = note !== null;
   return (
-    <View style={styles.indice}>
-      <Anneau note={note} couleur={couleur} />
-      <View style={styles.indiceTextes}>
-        <Text style={styles.indiceTitre}>{evalue ? `Indice d’impact : ${palier}` : 'Non évalué'}</Text>
-        <Text style={styles.indiceTexte}>
-          {evalue ? '100 = impact le plus faible' : 'Pas assez de données pour estimer l’impact.'}
-        </Text>
+    <>
+      <View style={styles.indice}>
+        <Anneau note={note} couleur={couleur} />
+        <View style={styles.indiceTextes}>
+          <Text style={styles.indiceTitre}>{evalue ? `Indice d’impact : ${palier}` : 'Non évalué'}</Text>
+          <Text style={styles.indiceTexte}>
+            {evalue ? '100 = impact le plus faible' : 'Pas assez de données pour estimer l’impact.'}
+          </Text>
+        </View>
       </View>
-    </View>
+      {evalue && onPourquoi ? (
+        <Pressable accessibilityRole="button" onPress={onPourquoi} style={styles.lienPourquoi}>
+          <Text style={styles.lienPourquoiTexte}>Pourquoi cette note ?</Text>
+          <Icone nom="chevron_right" taille={22} couleur="#00663A" />
+        </Pressable>
+      ) : null}
+    </>
   );
 }
 
@@ -203,6 +222,14 @@ const styles = StyleSheet.create({
   indiceTextes: { flex: 1 },
   indiceTitre: { fontFamily: police.extraGras, fontSize: tailleTexte.md, color: couleurs.texte },
   indiceTexte: { fontFamily: police.normal, fontSize: tailleTexte.base, color: couleurs.texteAttenue },
+
+  lienPourquoi: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 48,
+    paddingHorizontal: 20,
+  },
+  lienPourquoiTexte: { fontFamily: police.extraGras, fontSize: tailleTexte.base, color: '#00663A' },
 
   source: {
     fontFamily: police.normal,
