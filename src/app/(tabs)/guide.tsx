@@ -26,7 +26,7 @@ export default function GuideScreen() {
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
       {/* .guide-header */}
-      <View style={[styles.entete, { paddingTop: Math.max(16, marges.top) }]}>
+      <View style={[styles.entete, { paddingTop: 16 + marges.top }]}>
         <Text style={styles.titre}>Guide de tri</Text>
         <Text style={styles.sousTitre}>Province de Liège</Text>
       </View>

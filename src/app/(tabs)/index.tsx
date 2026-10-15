@@ -13,6 +13,7 @@ import { EnteteSombre } from '@/components/ui/entete-sombre';
 import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { useAuth } from '@/contexts/auth';
+import { useReglages } from '@/contexts/reglages';
 import { chargerStatsDashboard, type HistoriqueItem } from '@/services/historique';
 import { formaterMarque, formaterNomListe } from '@/services/affichage-produit';
 import { getUsername } from '@/services/user';
@@ -104,6 +105,7 @@ function GrilleVide({ message }: { message: string }) {
 export default function AccueilScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { indiceActif } = useReglages();
 
   // En-tête sombre : icônes de la barre d'état en clair (sinon heure et batterie sont noires sur fond sombre).
   useFocusEffect(
@@ -160,6 +162,8 @@ export default function AccueilScreen() {
         )}
       </View>
 
+      {/* Les scores font partie de l'indice d'impact : masqués si l'indice est désactivé dans les Paramètres */}
+      {indiceActif ? (
       <View style={styles.section}>
         <Text style={styles.titre}>Vos meilleurs scores</Text>
         {meilleursScores.length === 0 ? (
@@ -172,6 +176,7 @@ export default function AccueilScreen() {
           </View>
         )}
       </View>
+      ) : null}
 
       <View style={styles.conseil}>
         <Icone nom="lightbulb" taille={24} couleur={couleurs.marque} />

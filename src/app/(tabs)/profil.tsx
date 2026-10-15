@@ -3,8 +3,7 @@
  * en-tête sombre avec le pseudo et le bouton de déconnexion, menu « Mon activité »
  * et « Mon compte », et — sur le web seulement — l'installation de l'application (PWA).
  *
- * Comme en ligne, « Modifier mes informations » et « Paramètres » mènent à la page
- * « Fonctionnalité en cours de développement ».
+ * « Modifier mes informations » et « Paramètres » ouvrent leurs vraies pages (reprises de ProserpineV2).
  */
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -109,8 +108,6 @@ export default function ProfilScreen() {
       },
     });
 
-  const indisponible = () => router.push('/indisponible');
-
   return (
     <ScrollView showsVerticalScrollIndicator={false} style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
       <EnteteSombre
@@ -133,8 +130,8 @@ export default function ProfilScreen() {
 
       <Text style={styles.sectionTitre}>Mon compte</Text>
       <View style={styles.liste}>
-        <LigneMenu icone="edit_document" libelle="Modifier mes informations" onPress={indisponible} />
-        <LigneMenu icone="tune" libelle="Paramètres" onPress={indisponible} />
+        <LigneMenu icone="edit_document" libelle="Modifier mes informations" onPress={() => router.push('/modifier-informations')} />
+        <LigneMenu icone="tune" libelle="Paramètres" onPress={() => router.push('/parametres')} />
       </View>
 
       {invite ? (

@@ -57,7 +57,7 @@ export default function GuideDetailScreen() {
           accessibilityRole="button"
           accessibilityLabel="Retour au guide"
           onPress={retour}
-          style={[styles.retour, { top: Math.max(16, marges.top), backgroundColor: surClair ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)' }]}
+          style={[styles.retour, { top: 16 + marges.top, backgroundColor: surClair ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.2)' }]}
         >
           <Icone nom="arrow_back" taille={24} couleur={cat.textColor} />
         </Pressable>

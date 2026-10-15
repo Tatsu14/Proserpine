@@ -15,7 +15,7 @@ import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 
 type Props = Pick<
   TextInputProps,
-  'value' | 'onChangeText' | 'secureTextEntry' | 'keyboardType' | 'autoCapitalize' | 'autoComplete' | 'textContentType' | 'onSubmitEditing' | 'returnKeyType'
+  'value' | 'onChangeText' | 'maxLength' | 'secureTextEntry' | 'keyboardType' | 'autoCapitalize' | 'autoComplete' | 'textContentType' | 'onSubmitEditing' | 'returnKeyType'
 > & {
   etiquette: string;
   /** Message affiché sous le champ quand `invalide` est vrai. */

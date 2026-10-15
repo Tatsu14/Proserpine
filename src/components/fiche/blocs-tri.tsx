@@ -5,7 +5,8 @@
  * « où », puis « quoi ».
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { TexteMesure as Text } from '@/components/ui/texte';
 
 import { couleurs, ombre, police, rayon, tailleTexte } from '@/design/tokens';
 import { Icone } from '@/design/icones';
@@ -109,6 +110,7 @@ export function SectionTri({
   fiabilite,
   consigneSecurite,
   separation,
+  explication,
   onChanger,
   onOuvrirGuide,
 }: {
@@ -118,6 +120,8 @@ export function SectionTri({
   consigneSecurite?: string | null;
   /** Message précis « Retirez… » : seulement si une pièce collée va dans un autre bac. */
   separation?: string | null;
+  /** Phrase qui explique la règle (réponse choisie par l'utilisateur). */
+  explication?: string | null;
   /** Si fourni, affiche « Changer de matière » (cas où la matière a été choisie par l'utilisateur). */
   onChanger?: () => void;
   onOuvrirGuide: (categorie: string) => void;
@@ -139,6 +143,13 @@ export function SectionTri({
       {bacs.map((b) => (
         <CarteBac key={b.categorie} bac={b} onPress={() => onOuvrirGuide(b.categorie)} />
       ))}
+
+      {explication ? (
+        <View style={styles.avis}>
+          <Icone nom="info" taille={22} couleur={couleurs.texteAttenue} />
+          <Text style={styles.avisTexte}>{explication}</Text>
+        </View>
+      ) : null}
 
       {onChanger ? (
         <Pressable accessibilityRole="button" onPress={onChanger} style={styles.lienChanger}>

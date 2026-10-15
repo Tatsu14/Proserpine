@@ -1,37 +1,21 @@
 /**
  * CHOIX DE LA MATIÈRE — remplace le message sans issue « Pas assez de données ».
  *
- * Quand l'application ne sait rien de l'emballage, elle ne se contente plus de le
- * dire : elle laisse l'utilisateur choisir la matière en une touche, et lui donne
- * le bac correspondant. La consigne est alors étiquetée « Votre choix » (jamais
- * présentée comme lue sur l'emballage).
+ * Quand l'application ne sait rien de l'emballage, elle laisse l'utilisateur répondre en
+ * DEUX temps : 1) la matière, 2) une question précise sur son état ou son type (un carton
+ * gras ne va pas au papier, le verre se trie par couleur…). Les règles sont dans
+ * `services/matieres.ts`. La consigne obtenue est étiquetée « Votre choix » (jamais présentée
+ * comme lue sur l'emballage).
  *
- * Textes PROVISOIRES, à travailler avec Monsieur (et avec l'aide de trionsmieux.be
- * si Fost Plus l'accepte).
+ * Textes PROVISOIRES, à valider avec Monsieur.
  */
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { TexteMesure as Text } from '@/components/ui/texte';
 
 import { couleurs, ombre, police, rayon, tailleTexte } from '@/design/tokens';
 import { Icone } from '@/design/icones';
-
-/** Une matière proposée, avec le bac où elle va. */
-export type Matiere = {
-  id: string;
-  nom: string;
-  exemples: string;
-  icone: string;
-  /** Clé du bac (celles de tri.js : pmc, paper, glass…). */
-  categorie: string;
-};
-
-// Liste de la maquette validée. Plastique, métal et briques vont tous au sac PMC.
-export const MATIERES: Matiere[] = [
-  { id: 'plastique', nom: 'Plastique', exemples: 'sachet, bouteille, pot', icone: 'inventory_2', categorie: 'pmc' },
-  { id: 'carton', nom: 'Carton, papier', exemples: 'boîte, étui', icone: 'description', categorie: 'paper' },
-  { id: 'metal', nom: 'Métal', exemples: 'canette, conserve', icone: 'settings', categorie: 'pmc' },
-  { id: 'verre', nom: 'Verre', exemples: 'bocal, bouteille', icone: 'liquor', categorie: 'glass' },
-  { id: 'brique', nom: 'Brique de boisson', exemples: 'lait, jus', icone: 'local_drink', categorie: 'pmc' },
-];
+import { MATIERES, type Matiere, type ResultatMatiere } from '@/services/matieres';
 
 export function ChoixMatiere({
   indetermine,
@@ -40,10 +24,50 @@ export function ChoixMatiere({
 }: {
   /** Texte de tri.js quand plusieurs emballages sont possibles (affiché au-dessus). */
   indetermine?: string | null;
-  onChoisir: (matiere: Matiere) => void;
+  onChoisir: (resultat: ResultatMatiere) => void;
   /** « Je ne sais pas » : ouvre le guide du tri. */
   onGuide: () => void;
 }) {
+  // Matière choisie au premier temps (null = on est encore au premier temps).
+  const [matiere, setMatiere] = useState<Matiere | null>(null);
+
+  const choisirMatiere = (m: Matiere) => {
+    // Pas de deuxième question : la matière donne toujours le même bac (ex. brique de boisson).
+    if (!m.question) onChoisir(m.options[0].resultat);
+    else setMatiere(m);
+  };
+
+  // ---------- Deuxième temps : la question précise ----------
+  if (matiere) {
+    return (
+      <View style={styles.section}>
+        <Pressable accessibilityRole="button" onPress={() => setMatiere(null)} style={styles.retour}>
+          <Icone nom="arrow_back" taille={20} couleur="#00663A" />
+          <Text style={styles.retourTexte}>Changer de matière</Text>
+        </Pressable>
+        <Text style={styles.titre}>{matiere.question}</Text>
+        <Text style={styles.intro}>{matiere.nom}</Text>
+
+        {matiere.options.map((o) => (
+          <Pressable
+            key={o.id}
+            accessibilityRole="button"
+            accessibilityLabel={o.detail ? `${o.libelle} : ${o.detail}` : o.libelle}
+            onPress={() => onChoisir(o.resultat)}
+            style={({ pressed }) => [styles.option, { opacity: pressed ? 0.8 : 1 }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.matiereNom}>{o.libelle}</Text>
+              {o.detail ? <Text style={styles.matiereExemples}>{o.detail}</Text> : null}
+            </View>
+            <Icone nom="chevron_right" taille={24} couleur={couleurs.texteDiscret} />
+          </Pressable>
+        ))}
+      </View>
+    );
+  }
+
+  // ---------- Premier temps : la matière ----------
   return (
     <View style={styles.section}>
       <Text style={styles.titre}>Quelle est la matière ?</Text>
@@ -58,7 +82,7 @@ export function ChoixMatiere({
             key={m.id}
             accessibilityRole="button"
             accessibilityLabel={`${m.nom} : ${m.exemples}`}
-            onPress={() => onChoisir(m)}
+            onPress={() => choisirMatiere(m)}
             style={({ pressed }) => [styles.matiere, { opacity: pressed ? 0.8 : 1 }]}
           >
             <Icone nom={m.icone} taille={28} couleur={couleurs.marque} />
@@ -110,6 +134,22 @@ const styles = StyleSheet.create({
   matiereNom: { fontFamily: police.extraGras, fontSize: tailleTexte.md, color: couleurs.texte },
   matiereExemples: { fontFamily: police.normal, fontSize: tailleTexte.sm, color: couleurs.texteAttenue },
   autre: { flexBasis: '100%', minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // Réponses du deuxième temps : une ligne pleine largeur chacune.
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: 64,
+    padding: 14,
+    marginBottom: 10,
+    backgroundColor: couleurs.fondCarte,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    borderRadius: rayon.md,
+    boxShadow: ombre.sm,
+  },
+  retour: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 44, marginBottom: 4 },
+  retourTexte: { fontFamily: police.extraGras, fontSize: tailleTexte.base, color: '#00663A' },
   astuce: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 10 },
   astuceTexte: { flex: 1, fontFamily: police.normal, fontSize: tailleTexte.base, color: couleurs.texteAttenue, lineHeight: 18 },
   gras: { fontFamily: police.gras },

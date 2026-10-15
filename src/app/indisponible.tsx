@@ -4,6 +4,7 @@
  */
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui/texte';
 
 import { BoutonPrimaire } from '@/components/ui/boutons';
@@ -12,11 +13,12 @@ import { couleurs, police, tailleTexte } from '@/design/tokens';
 
 export default function IndisponibleScreen() {
   const router = useRouter();
+  const marges = useSafeAreaInsets();
   return (
     <View style={styles.page}>
       <Stack.Screen options={{ headerShown: false }} />
       {/* .unavailable-container */}
-      <View style={styles.centre}>
+      <View style={[styles.centre, { paddingTop: 24 + marges.top }]}>
         <View style={{ marginBottom: 16 }}>
           <Icone nom="engineering" taille={24} couleur={couleurs.marque} />
         </View>

@@ -4,7 +4,8 @@
  * sections vides en attendant la réponse.
  */
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { TexteMesure as Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BoutonRetour } from '@/components/fiche/blocs-info';
@@ -24,7 +25,7 @@ export function EcranIntrouvable({
   const marges = useSafeAreaInsets();
   return (
     <View style={styles.page}>
-      <View style={[styles.enteteNu, { paddingTop: 10 + marges.top }]}>
+      <View style={[styles.enteteNu, { paddingTop: 16 + marges.top }]}>
         <BoutonRetour onPress={onRetour} />
         <Text style={styles.enteteTitre}>Produit</Text>
       </View>
@@ -71,7 +72,7 @@ export function EcranChargement({ onRetour }: { onRetour: () => void }) {
   const marges = useSafeAreaInsets();
   return (
     <View style={styles.page}>
-      <View style={[styles.enteteNu, { paddingTop: 10 + marges.top }]}>
+      <View style={[styles.enteteNu, { paddingTop: 16 + marges.top }]}>
         <BoutonRetour onPress={onRetour} />
         <View style={{ flex: 1 }}>
           <Squelette style={{ height: 20, width: '80%', marginBottom: 6 }} />

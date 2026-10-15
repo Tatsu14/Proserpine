@@ -60,7 +60,7 @@ export default function HistoriqueScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* .history-header */}
-      <View style={[styles.entete, { paddingTop: Math.max(16, marges.top) }]}>
+      <View style={[styles.entete, { paddingTop: 16 + marges.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Retour"

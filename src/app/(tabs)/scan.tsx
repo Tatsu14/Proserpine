@@ -215,7 +215,7 @@ export default function ScanScreen() {
         accessibilityRole="button"
         accessibilityLabel="Retour"
         onPress={retour}
-        style={[styles.retour, { top: Math.max(16, marges.top) }]}
+        style={[styles.retour, { top: 16 + marges.top }]}
       >
         <Icone nom="arrow_back" taille={24} couleur="#FFFFFF" />
       </Pressable>

@@ -30,18 +30,20 @@ import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { BandeauHorsLigne, BlocIndice, BoiteConseil, EnteteFiche, Source } from '@/components/fiche/blocs-info';
-import { ChoixMatiere, type Matiere } from '@/components/fiche/choix-matiere';
+import { ChoixMatiere } from '@/components/fiche/choix-matiere';
 import { EcranChargement, EcranIntrouvable } from '@/components/fiche/ecrans-etat';
 import { FeuilleIndice } from '@/components/fiche/feuille-indice';
 import { SectionTri, type Bac, type Fiabilite } from '@/components/fiche/blocs-tri';
 import { scoreColor } from '@/constants/colors';
 import { useAuth } from '@/contexts/auth';
+import { useReglages } from '@/contexts/reglages';
 import { couleurs } from '@/design/tokens';
 import { rechercherProduitParEAN } from '@/services/api';
 import { ecrireProduitCache, lireProduitCache } from '@/services/cache';
 import { calculerEcoScore } from '@/services/ecoscore';
 import { enregistrerScan } from '@/services/historique';
 import { conseilPour } from '@/services/conseils';
+import type { ResultatMatiere } from '@/services/matieres';
 import { messageSeparation } from '@/services/separation';
 import { formaterProduit } from '@/services/affichage-produit';
 import { analyserEmballage } from '@/services/tri';
@@ -82,6 +84,7 @@ export default function ProduitScreen() {
   const { ean } = useLocalSearchParams<{ ean: string }>();
   const { user } = useAuth();
   const router = useRouter();
+  const { indiceActif } = useReglages();
 
   const [statut, setStatut] = useState<Statut>('chargement');
   const [produit, setProduit] = useState<any>(null);
@@ -89,7 +92,7 @@ export default function ProduitScreen() {
   const [tri, setTri] = useState<any>(null);
   const [nonRafraichi, setNonRafraichi] = useState(false);
   // Matière choisie par l'utilisateur quand l'emballage est inconnu (non conservée entre deux visites).
-  const [matiereChoisie, setMatiereChoisie] = useState<Matiere | null>(null);
+  const [matiereChoisie, setMatiereChoisie] = useState<ResultatMatiere | null>(null);
   // Feuille « Pourquoi cette note ? » ouverte ou non.
   const [feuilleOuverte, setFeuilleOuverte] = useState(false);
   // Incrémenté par « Réessayer » pour relancer le chargement.
@@ -195,7 +198,7 @@ export default function ProduitScreen() {
   // Quand l'application ne sait rien, l'utilisateur peut choisir la matière lui-même.
   // La consigne obtenue est alors étiquetée « Votre choix ».
   const choix = fiabiliteConnue === 'aucune' ? matiereChoisie : null;
-  const bacs: Bac[] = choix ? [{ categorie: choix.categorie, elements: [choix.nom] }] : bacsConnus;
+  const bacs: Bac[] = choix ? [{ categorie: choix.categorie, elements: choix.elements }] : bacsConnus;
   const fiabilite: Fiabilite = choix ? 'choisi' : fiabiliteConnue;
 
   const estDanger = bacs.some((b) => b.categorie === 'danger');
@@ -235,6 +238,7 @@ export default function ProduitScreen() {
             fiabilite={fiabilite}
             consigneSecurite={consigneSecurite}
             separation={separation}
+            explication={choix?.explication}
             onChanger={choix ? () => setMatiereChoisie(null) : undefined}
             onOuvrirGuide={(categorie) => router.push(`/guide/${categorie}`)}
           />
@@ -242,12 +246,15 @@ export default function ProduitScreen() {
 
         {conseil ? <BoiteConseil texte={conseil} /> : null}
 
-        <BlocIndice
-          note={note}
-          palier={score?.label ?? ''}
-          couleur={scoreColor(score?.scoreClass ?? 'unknown')}
-          onPourquoi={() => setFeuilleOuverte(true)}
-        />
+        {/* Réglage « Afficher l'indice d'impact » : masqué, la fiche reste complète grâce aux consignes de tri */}
+        {indiceActif ? (
+          <BlocIndice
+            note={note}
+            palier={score?.label ?? ''}
+            couleur={scoreColor(score?.scoreClass ?? 'unknown')}
+            onPourquoi={() => setFeuilleOuverte(true)}
+          />
+        ) : null}
 
         <Source nom={NOMS_SOURCES[produit.source] ?? String(produit.source ?? 'Open Food Facts')} />
       </ScrollView>

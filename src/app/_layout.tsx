@@ -18,6 +18,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { CadreMobile } from '@/components/ui/cadre-mobile';
 import { UiProvider } from '@/components/ui/ui-provider';
 import { AuthProvider } from '@/contexts/auth';
+import { ReglagesProvider } from '@/contexts/reglages';
 import { couleurs } from '@/design/tokens';
 
 // On garde l'écran de démarrage tant que les polices ne sont pas chargées,
@@ -52,12 +53,14 @@ export default function RootLayout() {
         {/* Sur ordinateur : cadre « téléphone » 390 × 844 comme la version en ligne. */}
         <CadreMobile>
           <AuthProvider>
+            <ReglagesProvider>
             <UiProvider>
               <StatusBar style="dark" />
               {/* Les routes sont auto-découvertes : index (dispatcher), (auth), (tabs), onboarding,
                   produit/[ean], guide/[type], historique, indisponible. */}
               <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: couleurs.fondCarte } }} />
             </UiProvider>
+            </ReglagesProvider>
           </AuthProvider>
         </CadreMobile>
       </SafeAreaProvider>

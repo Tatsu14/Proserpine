@@ -2,7 +2,8 @@
  * BLOCS D'INFORMATION de la fiche produit (variante B) : en-tête fin, bannière
  * hors-ligne, boîte « Conseil de tri », bloc compact « Indice d'impact », source.
  */
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { TexteMesure as Text } from '@/components/ui/texte';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -27,7 +28,7 @@ export function BoutonRetour({ onPress }: { onPress: () => void }) {
 export function EnteteFiche({ titre, sousTitre, onRetour }: { titre: string; sousTitre?: string; onRetour: () => void }) {
   const marges = useSafeAreaInsets();
   return (
-    <View style={[styles.entete, { paddingTop: 10 + marges.top }]}>
+    <View style={[styles.entete, { paddingTop: 16 + marges.top }]}>
       <BoutonRetour onPress={onRetour} />
       <View style={styles.enteteTextes}>
         <Text style={styles.nom} numberOfLines={2}>
