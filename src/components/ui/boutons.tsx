@@ -108,7 +108,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: rayon.md,
   },
-  texte: { fontFamily: police.gras, fontSize: tailleTexte.md },
+  // Les <button> de la version en ligne n'héritent pas du line-height 1,5 : interligne « normal » (≈ 1,26).
+  texte: { fontFamily: police.gras, fontSize: tailleTexte.md, lineHeight: tailleTexte.md * 1.26 },
   google: {
     flexDirection: 'row',
     alignItems: 'center',
