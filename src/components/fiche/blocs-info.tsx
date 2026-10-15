@@ -82,18 +82,21 @@ function Anneau({ note, couleur }: { note: number | null; couleur: string }) {
     <View style={styles.anneau}>
       <Svg width={TAILLE_ANNEAU} height={TAILLE_ANNEAU} style={styles.anneauSvg}>
         <Circle cx={28} cy={28} r={RAYON_ANNEAU} fill="none" stroke={couleurs.bordure} strokeWidth={TRAIT} />
-        <Circle
-          cx={28}
-          cy={28}
-          r={RAYON_ANNEAU}
-          fill="none"
-          stroke={couleur}
-          strokeWidth={TRAIT}
-          strokeLinecap="round"
-          strokeDasharray={CIRCONFERENCE}
-          strokeDashoffset={CIRCONFERENCE * (1 - part)}
-          transform="rotate(-90 28 28)"
-        />
+        {/* Produit non évalué : aucun arc (un arc de longueur nulle laisserait un point à cause du bout arrondi). */}
+        {part > 0 ? (
+          <Circle
+            cx={28}
+            cy={28}
+            r={RAYON_ANNEAU}
+            fill="none"
+            stroke={couleur}
+            strokeWidth={TRAIT}
+            strokeLinecap="round"
+            strokeDasharray={CIRCONFERENCE}
+            strokeDashoffset={CIRCONFERENCE * (1 - part)}
+            transform="rotate(-90 28 28)"
+          />
+        ) : null}
       </Svg>
       <Text style={styles.anneauNombre}>{note === null ? '?' : note}</Text>
     </View>
