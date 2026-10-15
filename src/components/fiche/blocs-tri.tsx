@@ -4,6 +4,7 @@
  * est plus grand (17 px) et la matière plus discrète (13 px) : on cherche d'abord
  * « où », puis « quoi ».
  */
+import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { couleurs, ombre, police, rayon, tailleTexte } from '@/design/tokens';
@@ -85,6 +86,14 @@ export function CarteBac({ bac, onPress }: { bac: Bac; onPress?: () => void }) {
         { backgroundColor: FOND_BAC[bac.categorie] ?? couleurs.texteAttenue, opacity: pressed ? 0.85 : 1 },
       ]}
     >
+      {/* Reflet diagonal blanc → transparent (le ::after de la maquette) */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <Icone nom={ICONES_BAC[bac.categorie] ?? 'delete'} taille={34} couleur={texte} />
       <View style={styles.carteTextes}>
         <Text style={[styles.carteNom, { color: texte }]}>{TITRES_BAC[bac.categorie] ?? bac.categorie}</Text>
@@ -187,12 +196,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 10,
     minHeight: 72,
+    overflow: 'hidden',
     boxShadow: ombre.md,
   },
   carteTextes: { flex: 1 },
   // Nom du bac plus grand, matière plus petite (demande de Monsieur).
   carteNom: { fontFamily: police.extraGras, fontSize: 17, lineHeight: 20 },
-  carteMatiere: { fontFamily: police.normal, fontSize: tailleTexte.base, lineHeight: 16, marginTop: 2, opacity: 0.95 },
+  carteMatiere: { fontFamily: police.moyen, fontSize: tailleTexte.base, lineHeight: 16, marginTop: 2, opacity: 0.95 },
   avis: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/contexts/auth';
 import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
+import { formaterNomListe } from '@/services/affichage-produit';
 import { chargerHistorique, type HistoriqueItem } from '@/services/historique';
 
 // Date en toutes lettres, comme en ligne : « 15 octobre 2026 ».
@@ -99,7 +100,7 @@ export default function HistoriqueScreen() {
               </View>
               <View style={styles.ligneInfo}>
                 <Text style={styles.ligneNom} numberOfLines={1}>
-                  {h.nom || 'Produit inconnu'}
+                  {formaterNomListe(h.nom) || 'Produit inconnu'}
                 </Text>
                 <Text style={styles.ligneDate} numberOfLines={1}>
                   {dateEnLettres(h)}

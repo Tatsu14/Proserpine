@@ -43,6 +43,7 @@ import { calculerEcoScore } from '@/services/ecoscore';
 import { enregistrerScan } from '@/services/historique';
 import { conseilPour } from '@/services/conseils';
 import { messageSeparation } from '@/services/separation';
+import { formaterProduit } from '@/services/affichage-produit';
 import { analyserEmballage } from '@/services/tri';
 
 type Statut = 'chargement' | 'introuvable' | 'ok';
@@ -208,6 +209,9 @@ export default function ProduitScreen() {
   // et aucun pour le Recyparc seul ou en l'absence de consigne (textes provisoires).
   const conseil = fiabilite !== 'aucune' ? conseilPour(bacs) : null;
 
+  // Nom court + « marque · quantité » (la quantité sort du nom ; les listes de marques sont réduites à la première).
+  const affiche = formaterProduit(produit.nom, produit.marque, produit.donnees_brutes?.quantity);
+
   // Indice d'impact : null = « Non évalué » (jamais une note par défaut).
   const evalue = score && score.evalue !== false && score.score !== null;
   const note: number | null = evalue ? score.score : null;
@@ -215,7 +219,7 @@ export default function ProduitScreen() {
   return (
     <View style={styles.page}>
       <Stack.Screen options={{ headerShown: false }} />
-      <EnteteFiche nom={produit.nom} marque={produit.marque} onRetour={retour} />
+      <EnteteFiche titre={affiche.titre} sousTitre={affiche.sousTitre} onRetour={retour} />
       <ScrollView contentContainerStyle={styles.contenu} showsVerticalScrollIndicator={false}>
         {nonRafraichi ? <BandeauHorsLigne /> : null}
 

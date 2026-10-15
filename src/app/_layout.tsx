@@ -1,5 +1,6 @@
 import {
   Outfit_400Regular,
+  Outfit_500Medium,
   Outfit_600SemiBold,
   Outfit_700Bold,
   Outfit_800ExtraBold,
@@ -27,6 +28,7 @@ export default function RootLayout() {
   // Mêmes polices que ProserpineV2 : Outfit (texte) et JetBrains Mono (chiffres).
   const [policesChargees, erreurPolices] = useFonts({
     Outfit_400Regular,
+    Outfit_500Medium,
     Outfit_600SemiBold,
     Outfit_700Bold,
     Outfit_800ExtraBold,

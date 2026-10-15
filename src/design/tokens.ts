@@ -128,6 +128,7 @@ export const tailleTexte = {
 // ---------------------------------------------------------------------------
 export const police = {
   normal: 'Outfit_400Regular',
+  moyen: 'Outfit_500Medium',
   semiGras: 'Outfit_600SemiBold',
   gras: 'Outfit_700Bold',
   extraGras: 'Outfit_800ExtraBold',

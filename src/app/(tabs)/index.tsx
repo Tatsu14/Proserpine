@@ -13,6 +13,7 @@ import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { useAuth } from '@/contexts/auth';
 import { chargerStatsDashboard, type HistoriqueItem } from '@/services/historique';
+import { formaterMarque, formaterNomListe } from '@/services/affichage-produit';
 import { getUsername } from '@/services/user';
 
 // Conseils de tri (un par jour) — repris verbatim de la version en ligne.
@@ -72,13 +73,13 @@ function CarteStats({ p, rang, mode, onPress }: { p: HistoriqueItem; rang: numbe
     >
       <Text style={styles.rang}>#{rang}</Text>
       <Text style={styles.nomCarte} numberOfLines={2}>
-        {p.nom || 'Produit'}
+        {formaterNomListe(p.nom) || 'Produit'}
       </Text>
       {mode === 'score' && typeof p.ecoScore === 'number' ? (
         <Text style={[styles.score, { color: couleurScore(p.ecoScore) }]}>{p.ecoScore}/100</Text>
       ) : (
         <Text style={styles.marque} numberOfLines={1}>
-          {p.marque || ''}
+          {formaterMarque(p.marque, 30)}
         </Text>
       )}
     </Pressable>

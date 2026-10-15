@@ -24,16 +24,20 @@ export function BoutonRetour({ onPress }: { onPress: () => void }) {
 }
 
 /** En-tête fin : retour + nom du produit + marque. Il respecte la zone du téléphone (encoche). */
-export function EnteteFiche({ nom, marque, onRetour }: { nom: string; marque?: string; onRetour: () => void }) {
+export function EnteteFiche({ titre, sousTitre, onRetour }: { titre: string; sousTitre?: string; onRetour: () => void }) {
   const marges = useSafeAreaInsets();
   return (
     <View style={[styles.entete, { paddingTop: 10 + marges.top }]}>
       <BoutonRetour onPress={onRetour} />
       <View style={styles.enteteTextes}>
-        <Text style={styles.nom} numberOfLines={3}>
-          {nom}
+        <Text style={styles.nom} numberOfLines={2}>
+          {titre}
         </Text>
-        {marque ? <Text style={styles.marque}>{marque}</Text> : null}
+        {sousTitre ? (
+          <Text style={styles.marque} numberOfLines={1}>
+            {sousTitre}
+          </Text>
+        ) : null}
       </View>
     </View>
   );

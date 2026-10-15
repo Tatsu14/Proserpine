@@ -14,6 +14,7 @@ import { useUi } from '@/components/ui/ui-provider';
 import { useAuth } from '@/contexts/auth';
 import { Icone } from '@/design/icones';
 import { couleurs, ombre, police, rayon, tailleTexte } from '@/design/tokens';
+import { formaterMarque, formaterNomListe } from '@/services/affichage-produit';
 import { rechercherProduitParTexte } from '@/services/api';
 import { ecrireProduitCache } from '@/services/cache';
 import { chargerHistorique, type HistoriqueItem } from '@/services/historique';
@@ -31,10 +32,10 @@ function LigneProduit({ icone, nom, marque, chevron, onPress }: { icone: string;
       </View>
       <View style={styles.ligneInfo}>
         <Text style={styles.ligneNom} numberOfLines={1}>
-          {nom}
+          {formaterNomListe(nom)}
         </Text>
         <Text style={styles.ligneMarque} numberOfLines={1}>
-          {marque}
+          {formaterMarque(marque, 40)}
         </Text>
       </View>
       {chevron ? <Icone nom="chevron_right" taille={24} couleur={couleurs.bordure} /> : null}
