@@ -1,29 +1,30 @@
 /**
- * auth.ts — Authentification (email / mot de passe) adaptée à React Native.
+ * auth.ts — Authentification, reprise de `js/auth.js` de la version en ligne.
  *
- * Différences avec la version web :
- *  - Aucune manipulation du DOM, aucun loader, aucune redirection ici. Les écrans
- *    gèrent l'UI ; la redirection se fait automatiquement via le contexte d'auth
- *    (onAuthStateChanged) une fois la session établie.
- *  - On garde le même contrat : chaque fonction retourne { success, error } plutôt
- *    que de lever une exception.
- *  - Google Sign-In n'est PAS porté en v1 (il nécessite une configuration native
- *    dédiée) — uniquement email / mot de passe.
+ * Même contrat : chaque fonction renvoie { success, error } au lieu de lever une
+ * exception, avec les MÊMES messages d'erreur qu'en ligne. Aucun affichage ici :
+ * les écrans gèrent le chargement et les redirections.
+ *
+ * Connexion Google : par fenêtre surgissante, donc web uniquement pour l'instant.
+ * La version native demandera le SDK Google natif (voir le backlog).
  */
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
+  signInWithPopup,
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { Platform } from 'react-native';
 
-export type AuthResult = { success: boolean; error?: string };
+import { auth, db, googleProvider } from './firebase';
 
-// Traduit les codes d'erreur Firebase en messages clairs en français.
+export type AuthResult = { success: boolean; error?: string | null; nouveau?: boolean };
+
+// Messages d'erreur traduits (mêmes que getAuthErrorMessage en ligne).
 function messageErreur(code?: string): string {
   switch (code) {
     case 'auth/email-already-in-use':
@@ -31,30 +32,25 @@ function messageErreur(code?: string): string {
     case 'auth/invalid-email':
       return "L'adresse e-mail n'est pas valide.";
     case 'auth/weak-password':
-      return 'Le mot de passe est trop faible (6 caractères minimum).';
+      return 'Le mot de passe est trop faible.';
     case 'auth/user-not-found':
+      return 'Aucun utilisateur trouvé avec cette adresse e-mail.';
     case 'auth/wrong-password':
-    case 'auth/invalid-credential':
       return 'Adresse e-mail ou mot de passe incorrect.';
-    case 'auth/too-many-requests':
-      return 'Trop de tentatives. Veuillez réessayer plus tard.';
-    case 'auth/network-request-failed':
-      return 'Problème de connexion réseau. Vérifiez votre connexion.';
     default:
       return 'Une erreur est survenue. Veuillez réessayer.';
   }
 }
 
-export async function registerUser(
-  email: string,
-  password: string,
-  username: string,
-): Promise<AuthResult> {
+/** La connexion Google est-elle disponible sur cette plateforme ? */
+export const googleDisponible = Platform.OS === 'web';
+
+export async function registerUser(email: string, password: string, username: string): Promise<AuthResult> {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     const user = cred.user;
 
-    // E-mail de vérification (non bloquant si l'envoi échoue).
+    // E-mail de confirmation (non bloquant si l'envoi échoue).
     try {
       await sendEmailVerification(user);
     } catch {
@@ -63,7 +59,7 @@ export async function registerUser(
 
     await updateProfile(user, { displayName: username });
 
-    // Document utilisateur dans Firestore (même structure que la version web).
+    // Document utilisateur dans Firestore (même structure qu'en ligne).
     await setDoc(doc(db, 'utilisateurs', user.uid), {
       username,
       email,
@@ -80,8 +76,36 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
   try {
     await signInWithEmailAndPassword(auth, email, password);
     return { success: true };
+  } catch {
+    // En ligne, toute erreur de connexion donne le même message (on ne dit pas ce qui est faux).
+    return { success: false, error: 'Adresse e-mail ou mot de passe incorrect.' };
+  }
+}
+
+/** Connexion Google (web). `nouveau` vaut vrai à la première connexion : l'écran enchaîne alors sur l'onboarding. */
+export async function loginWithGoogle(): Promise<AuthResult> {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+    const ref = doc(db, 'utilisateurs', user.uid);
+    const existant = await getDoc(ref);
+    if (!existant.exists()) {
+      await setDoc(ref, { username: user.displayName || '', email: user.email, createdAt: serverTimestamp() });
+      return { success: true, nouveau: true };
+    }
+    return { success: true, nouveau: false };
   } catch (e: any) {
-    return { success: false, error: messageErreur(e?.code) };
+    // L'utilisateur a fermé la fenêtre : ce n'est pas une erreur à afficher.
+    if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') {
+      return { success: false, error: null };
+    }
+    if (e?.code === 'auth/popup-blocked') {
+      return { success: false, error: 'La popup a été bloquée par le navigateur. Autorisez les popups pour ce site.' };
+    }
+    if (e?.code === 'auth/unauthorized-domain') {
+      return { success: false, error: "Ce domaine n'est pas autorisé. Contactez l'administrateur." };
+    }
+    return { success: false, error: 'La connexion avec Google a échoué. Veuillez réessayer.' };
   }
 }
 
@@ -90,7 +114,7 @@ export async function logoutUser(): Promise<AuthResult> {
     await signOut(auth);
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: messageErreur(e?.code) };
+    return { success: false, error: e?.message ?? 'Erreur de déconnexion' };
   }
 }
 
@@ -100,5 +124,24 @@ export async function resetPassword(email: string): Promise<AuthResult> {
     return { success: true };
   } catch (e: any) {
     return { success: false, error: messageErreur(e?.code) };
+  }
+}
+
+/** L'utilisateur a-t-il déjà vu l'onboarding ? (champ `onboardingVu` du document utilisateur) */
+export async function onboardingDejaVu(uid: string): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, 'utilisateurs', uid));
+    return snap.exists() && (snap.data() as any).onboardingVu === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Marque l'onboarding comme vu (non bloquant : en cas d'échec on continue quand même). */
+export async function marquerOnboardingVu(uid: string): Promise<void> {
+  try {
+    await setDoc(doc(db, 'utilisateurs', uid), { onboardingVu: true }, { merge: true });
+  } catch {
+    // non bloquant
   }
 }

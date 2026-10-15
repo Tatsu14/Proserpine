@@ -1,39 +1,80 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
+/**
+ * PROFIL — reproduit `pages/profil.html` + `js/pages/profil.js` :
+ * en-tête sombre avec le pseudo et le bouton de déconnexion, menu « Mon activité »
+ * et « Mon compte », et — sur le web seulement — l'installation de l'application (PWA).
+ *
+ * Comme en ligne, « Modifier mes informations » et « Paramètres » mènent à la page
+ * « Fonctionnalité en cours de développement ».
+ */
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCallback, useEffect, useState } from 'react';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Colors } from '@/constants/colors';
+import { EnteteBoutonDanger, EnteteSombre } from '@/components/ui/entete-sombre';
+import { useUi } from '@/components/ui/ui-provider';
 import { useAuth } from '@/contexts/auth';
+import { Icone } from '@/design/icones';
+import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { logoutUser } from '@/services/auth';
 import { getUsername } from '@/services/user';
 
-const logo = require('../../../assets/images/logo.png');
-
-function MenuItem({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
+/** Une ligne de menu (`.menu-item`). */
+function LigneMenu({ icone, libelle, droite, onPress }: { icone: string; libelle: string; droite?: string; onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
-      <Ionicons name={icon} size={22} color={Colors.textDark} />
-      <Text style={styles.menuLabel}>{label}</Text>
-      <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
-    </TouchableOpacity>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.menu, pressed && { backgroundColor: couleurs.fondGris }]}
+    >
+      <View style={styles.menuGauche}>
+        <Icone nom={icone} taille={24} couleur={couleurs.marque} />
+        <Text style={styles.menuLibelle}>{libelle}</Text>
+      </View>
+      <Icone nom={droite ?? 'chevron_right'} taille={24} couleur={couleurs.texteDiscret} />
+    </Pressable>
   );
 }
 
 export default function ProfilScreen() {
   const { user } = useAuth();
   const router = useRouter();
-  const [pseudo, setPseudo] = useState('…');
+  const ui = useUi();
+  const [pseudo, setPseudo] = useState('Chargement...');
+
+  // --- Installation de la PWA (web uniquement) ---
+  const [invite, setInvite] = useState<any>(null); // l'événement « beforeinstallprompt »
+  const [aideIos, setAideIos] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const dejaInstallee =
+      window.matchMedia?.('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    if (dejaInstallee) return;
+
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+      // iOS : pas d'invite automatique, on affiche l'explication manuelle.
+      setAideIos(true);
+      return;
+    }
+    const surInvite = (e: any) => {
+      e.preventDefault();
+      setInvite(e);
+    };
+    const surInstallee = () => setInvite(null);
+    window.addEventListener('beforeinstallprompt', surInvite);
+    window.addEventListener('appinstalled', surInstallee);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', surInvite);
+      window.removeEventListener('appinstalled', surInstallee);
+    };
+  }, []);
+
+  const installer = async () => {
+    if (!invite) return;
+    invite.prompt();
+    const { outcome } = await invite.userChoice;
+    if (outcome === 'accepted') setInvite(null);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -45,73 +86,114 @@ export default function ProfilScreen() {
     }, [user]),
   );
 
-  function confirmerDeconnexion() {
-    Alert.alert('Déconnexion', 'Vous êtes sur le point de vous déconnecter. Confirmer ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => logoutUser() },
-    ]);
-  }
+  const deconnecter = () =>
+    ui.confirmer({
+      titre: 'Déconnexion',
+      message: 'Vous êtes sur le point de vous déconnecter. Confirmer ?',
+      confirmer: 'Se déconnecter',
+      annuler: 'Annuler',
+      danger: true,
+      onConfirmer: async () => {
+        const r = await logoutUser();
+        if (!r.success) ui.toast('Erreur de déconnexion', 'error');
+      },
+    });
 
-  function bientotDisponible() {
-    Alert.alert('Bientôt disponible', 'Cette fonctionnalité sera ajoutée prochainement.');
-  }
+  const indisponible = () => router.push('/indisponible');
 
   return (
-    <View style={styles.root}>
-      <SafeAreaView edges={['top']} style={styles.header}>
-        <View style={styles.brandRow}>
-          <Image source={logo} style={styles.brandLogo} contentFit="contain" />
-          <Text style={styles.brandName}>PROSERPINE</Text>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity
-            style={styles.headerLogout}
-            onPress={confirmerDeconnexion}
-            accessibilityLabel="Se déconnecter"
-          >
-            <Ionicons name="log-out-outline" size={22} color={Colors.statusDanger} />
-          </TouchableOpacity>
+    <ScrollView style={styles.page} contentContainerStyle={{ paddingBottom: 16 }}>
+      <EnteteSombre
+        action={
+          <EnteteBoutonDanger onPress={deconnecter}>
+            <Icone nom="logout" taille={24} couleur="#E74C3C" />
+          </EnteteBoutonDanger>
+        }
+      >
+        {/* .header-dark-profile */}
+        <View style={styles.profil}>
+          <Text style={styles.pseudo}>{pseudo}</Text>
         </View>
-        <Text style={styles.username}>{pseudo}</Text>
-      </SafeAreaView>
+      </EnteteSombre>
 
-      <ScrollView contentContainerStyle={styles.body}>
-        <Text style={styles.sectionTitle}>Mon activité</Text>
-        <View style={styles.menuGroup}>
-          <MenuItem
-            icon="time-outline"
-            label="Historique de recherches"
-            onPress={() => router.push('/historique')}
-          />
-        </View>
+      <Text style={styles.sectionTitre}>Mon activité</Text>
+      <View style={styles.liste}>
+        <LigneMenu icone="history" libelle="Historique de recherches" onPress={() => router.push('/historique')} />
+      </View>
 
-        <Text style={styles.sectionTitle}>Mon compte</Text>
-        <View style={styles.menuGroup}>
-          <MenuItem icon="create-outline" label="Modifier mes informations" onPress={bientotDisponible} />
-          <MenuItem icon="options-outline" label="Paramètres" onPress={bientotDisponible} />
-        </View>
-      </ScrollView>
-    </View>
+      <Text style={styles.sectionTitre}>Mon compte</Text>
+      <View style={styles.liste}>
+        <LigneMenu icone="edit_document" libelle="Modifier mes informations" onPress={indisponible} />
+        <LigneMenu icone="tune" libelle="Paramètres" onPress={indisponible} />
+      </View>
+
+      {invite ? (
+        <>
+          <Text style={styles.sectionTitre}>Application</Text>
+          <View style={styles.liste}>
+            <LigneMenu icone="install_mobile" libelle="Installer l'application" droite="download" onPress={installer} />
+          </View>
+        </>
+      ) : null}
+
+      {aideIos ? (
+        <>
+          <Text style={styles.sectionTitre}>Application</Text>
+          <View style={styles.aideIos}>
+            <Icone nom="ios_share" taille={24} couleur={couleurs.marque} />
+            <Text style={styles.aideIosTexte}>
+              Pour installer l'app, appuyez sur <Text style={{ fontFamily: police.gras }}>Partager</Text> puis{' '}
+              <Text style={{ fontFamily: police.gras }}>"Sur l'écran d'accueil"</Text>.
+            </Text>
+          </View>
+        </>
+      ) : null}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bgApp },
-  header: { backgroundColor: Colors.brandDarkest, paddingHorizontal: 20, paddingBottom: 24 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
-  brandLogo: { width: 26, height: 26 },
-  brandName: { color: Colors.textOnDark, fontSize: 15, fontWeight: '800', letterSpacing: 1 },
-  headerLogout: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(231,76,60,0.15)',
+  page: { flex: 1, backgroundColor: couleurs.fondCarte },
+  profil: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingTop: 8 },
+  // .username-title
+  pseudo: { flex: 1, fontFamily: police.extraGras, fontSize: tailleTexte.xl2, color: '#FFFFFF', textAlign: 'center' },
+  // .profile-section-title
+  sectionTitre: {
+    fontFamily: police.extraGras,
+    fontSize: tailleTexte.md,
+    color: couleurs.texteAttenue,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    marginHorizontal: 16,
+    marginBottom: 8,
   },
-  username: { color: Colors.textOnDark, fontSize: 24, fontWeight: '800', marginTop: 20 },
-  body: { padding: 20 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, marginTop: 18, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
-  menuGroup: { backgroundColor: Colors.bgSurface, borderRadius: 14, borderWidth: 1, borderColor: Colors.borderDefault, overflow: 'hidden' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 16 },
-  menuLabel: { flex: 1, fontSize: 15, fontWeight: '500', color: Colors.textDark },
+  // .profile-menu
+  liste: { marginHorizontal: 16, marginBottom: 24, gap: 12 },
+  // .menu-item
+  menu: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: couleurs.fondCarte,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    borderRadius: rayon.md,
+    padding: 16,
+  },
+  menuGauche: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  menuLibelle: { fontFamily: police.semiGras, fontSize: tailleTexte.md, color: couleurs.texte },
+  // .install-ios-hint
+  aideIos: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    backgroundColor: couleurs.fondCarte,
+    borderWidth: 1,
+    borderColor: couleurs.bordure,
+    borderRadius: rayon.md,
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 24,
+  },
+  aideIosTexte: { flex: 1, fontFamily: police.normal, fontSize: tailleTexte.md, lineHeight: 21, color: couleurs.texte },
 });

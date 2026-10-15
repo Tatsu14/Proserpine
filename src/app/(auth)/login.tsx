@@ -1,190 +1,143 @@
-import { Image } from 'expo-image';
-import { Link } from 'expo-router';
+/**
+ * CONNEXION — reproduit `pages/connexion.html` + `js/pages/connexion.js` :
+ * e-mail + mot de passe validés quand on quitte le champ, bouton désactivé tant que
+ * le formulaire n'est pas valide, « Mot de passe oublié ? », connexion Google (web).
+ */
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { Colors } from '@/constants/colors';
-import { loginUser, resetPassword } from '@/services/auth';
+import { BoutonGoogle, BoutonPrimaire, SeparateurOu } from '@/components/ui/boutons';
+import { CarteAuth, ErreurAuth, LiensAuth } from '@/components/ui/carte-auth';
+import { Champ } from '@/components/ui/champ';
+import { useUi } from '@/components/ui/ui-provider';
+import { useAuth } from '@/contexts/auth';
+import { couleurs, police, tailleTexte } from '@/design/tokens';
+import { googleDisponible, loginUser, loginWithGoogle, resetPassword } from '@/services/auth';
 
-const logo = require('../../../assets/images/logo.png');
-const isValidEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-const isValidPassword = (v: string) => v.length >= 6;
+// Mêmes règles qu'en ligne.
+const emailValide = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const motDePasseValide = (v: string) => v.length >= 6;
 
-export default function LoginScreen() {
+export default function ConnexionScreen() {
+  const router = useRouter();
+  const ui = useUi();
+  const { setOperationEnCours } = useAuth();
+
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [emailErr, setEmailErr] = useState(false);
-  const [pwdErr, setPwdErr] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [resetMsg, setResetMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [motDePasse, setMotDePasse] = useState('');
+  // Une erreur de champ n'apparaît qu'après avoir quitté le champ (comme en ligne).
+  const [emailInvalide, setEmailInvalide] = useState(false);
+  const [mdpInvalide, setMdpInvalide] = useState(false);
+  const [erreur, setErreur] = useState('');
 
-  const canSubmit = isValidEmail(email) && isValidPassword(password);
+  const pret = emailValide(email) && motDePasseValide(motDePasse);
 
-  async function handleLogin() {
-    setAuthError(null);
-    setLoading(true);
-    const res = await loginUser(email, password);
-    setLoading(false);
-    if (!res.success) setAuthError(res.error ?? 'Une erreur est survenue.');
-  }
+  const surEmail = (v: string) => {
+    setEmail(v);
+    if (emailInvalide) setEmailInvalide(v.length > 0 && !emailValide(v));
+    setErreur('');
+  };
+  const surMdp = (v: string) => {
+    setMotDePasse(v);
+    if (mdpInvalide) setMdpInvalide(v.length > 0 && !motDePasseValide(v));
+    setErreur('');
+  };
 
-  async function handleReset() {
-    setAuthError(null);
-    setResetMsg(null);
+  const seConnecter = async () => {
+    if (!pret) return;
+    setErreur('');
+    ui.chargement('Connexion en cours...');
+    const r = await loginUser(email, motDePasse);
+    ui.chargement(null);
+    // En cas de succès, la redirection vers l'accueil se fait toute seule (zone publique → connectée).
+    if (!r.success && r.error) setErreur(r.error);
+  };
+
+  const motDePasseOublie = async () => {
+    setErreur('');
     if (!email) {
-      setAuthError('Veuillez entrer votre adresse e-mail puis cliquer sur Mot de passe oublié.');
+      setErreur('Veuillez entrer votre adresse e-mail puis cliquer sur Mot de passe oublié.');
       return;
     }
-    const res = await resetPassword(email);
-    if (res.success) {
-      setResetMsg('Un e-mail de réinitialisation a été envoyé à votre adresse.');
+    ui.chargement("Envoi de l'e-mail...");
+    const r = await resetPassword(email);
+    ui.chargement(null);
+    if (r.success) ui.toast('Un e-mail de réinitialisation a été envoyé à votre adresse.', 'success');
+    else if (r.error) setErreur(r.error);
+  };
+
+  const google = async () => {
+    setErreur('');
+    // On empêche la redirection automatique : un nouveau compte doit passer par l'onboarding.
+    setOperationEnCours(true);
+    ui.chargement('Connexion avec Google...');
+    const r = await loginWithGoogle();
+    ui.chargement(null);
+    if (r.success) {
+      router.replace(r.nouveau ? '/onboarding' : '/(tabs)');
+      setOperationEnCours(false);
     } else {
-      setAuthError(res.error ?? 'Une erreur est survenue.');
+      setOperationEnCours(false);
+      if (r.error) setErreur(r.error);
     }
-  }
+  };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Image source={logo} style={styles.logo} contentFit="contain" />
-          <Text style={styles.title}>Bon retour</Text>
-          <Text style={styles.subtitle}>Connectez-vous pour continuer</Text>
+    <CarteAuth titre="Bon retour" sousTitre="Connectez-vous pour continuer">
+      <ErreurAuth message={erreur} />
 
-          <View style={styles.form}>
-            {authError ? <Text style={styles.authError}>{authError}</Text> : null}
-            {resetMsg ? <Text style={styles.successBanner}>{resetMsg}</Text> : null}
+      <Champ
+        etiquette="Adresse e-mail"
+        value={email}
+        onChangeText={surEmail}
+        onBlur={() => setEmailInvalide(email.length > 0 && !emailValide(email))}
+        invalide={emailInvalide}
+        erreur="Adresse e-mail invalide."
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        textContentType="emailAddress"
+      />
+      <Champ
+        etiquette="Mot de passe"
+        value={motDePasse}
+        onChangeText={surMdp}
+        onBlur={() => setMdpInvalide(motDePasse.length > 0 && !motDePasseValide(motDePasse))}
+        invalide={mdpInvalide}
+        erreur="Le mot de passe doit contenir au moins 6 caractères."
+        secureTextEntry
+        autoCapitalize="none"
+        autoComplete="current-password"
+        textContentType="password"
+        returnKeyType="go"
+        onSubmitEditing={seConnecter}
+      />
 
-            <Text style={styles.label}>Adresse e-mail</Text>
-            <TextInput
-              style={[styles.input, emailErr && styles.inputInvalid]}
-              value={email}
-              onChangeText={(v) => {
-                setEmail(v);
-                if (emailErr) setEmailErr(v.length > 0 && !isValidEmail(v));
-                setAuthError(null);
-                setResetMsg(null);
-              }}
-              onBlur={() => setEmailErr(email.length > 0 && !isValidEmail(email))}
-              placeholder="vous@exemple.be"
-              placeholderTextColor={Colors.textLight}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-            />
-            {emailErr ? <Text style={styles.fieldErr}>Adresse e-mail invalide.</Text> : null}
+      {/* .forgot-pwd */}
+      <View style={styles.oublie}>
+        <Text accessibilityRole="link" onPress={motDePasseOublie} style={styles.oublieLien}>
+          Mot de passe oublié ?
+        </Text>
+      </View>
 
-            <Text style={styles.label}>Mot de passe</Text>
-            <TextInput
-              style={[styles.input, pwdErr && styles.inputInvalid]}
-              value={password}
-              onChangeText={(v) => {
-                setPassword(v);
-                if (pwdErr) setPwdErr(v.length > 0 && !isValidPassword(v));
-                setAuthError(null);
-              }}
-              onBlur={() => setPwdErr(password.length > 0 && !isValidPassword(password))}
-              placeholder="••••••••"
-              placeholderTextColor={Colors.textLight}
-              secureTextEntry
-              autoComplete="password"
-            />
-            {pwdErr ? (
-              <Text style={styles.fieldErr}>Le mot de passe doit contenir au moins 6 caractères.</Text>
-            ) : null}
+      <BoutonPrimaire disabled={!pret} onPress={seConnecter}>
+        Se connecter
+      </BoutonPrimaire>
 
-            <TouchableOpacity onPress={handleReset}>
-              <Text style={styles.forgot}>Mot de passe oublié ?</Text>
-            </TouchableOpacity>
+      {googleDisponible ? (
+        <>
+          <SeparateurOu />
+          <BoutonGoogle onPress={google} />
+        </>
+      ) : null}
 
-            <TouchableOpacity
-              style={[styles.button, (!canSubmit || loading) && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={!canSubmit || loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={Colors.textOnDark} />
-              ) : (
-                <Text style={styles.buttonText}>Se connecter</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Pas encore de compte ? </Text>
-            <Link href="/(auth)/register" style={styles.footerLink}>
-              S’inscrire
-            </Link>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <LiensAuth texte="Pas encore de compte ?" lien="S'inscrire" onPress={() => router.replace('/(auth)/register')} />
+    </CarteAuth>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.bgSurface },
-  flex: { flex: 1 },
-  container: { flexGrow: 1, justifyContent: 'center', padding: 24 },
-  logo: { width: 64, height: 64, alignSelf: 'center', marginBottom: 16 },
-  title: { fontSize: 26, fontWeight: '800', color: Colors.textDark, textAlign: 'center' },
-  subtitle: { fontSize: 15, color: Colors.textMuted, textAlign: 'center', marginTop: 6, marginBottom: 28 },
-  form: { gap: 4 },
-  authError: {
-    backgroundColor: 'rgba(231,76,60,0.10)',
-    color: Colors.statusDanger,
-    fontSize: 14,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  successBanner: {
-    backgroundColor: 'rgba(0,204,102,0.12)',
-    color: Colors.brandPrimaryDark,
-    fontSize: 14,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  label: { fontSize: 13, fontWeight: '600', color: Colors.textDark, marginTop: 12 },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.borderDefault,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: Colors.textDark,
-    backgroundColor: Colors.bgGray,
-    marginTop: 4,
-  },
-  inputInvalid: { borderColor: Colors.statusDanger },
-  fieldErr: { color: Colors.statusDanger, fontSize: 12.5, marginTop: 4 },
-  forgot: { color: Colors.brandPrimaryDark, fontSize: 13, marginTop: 12, textAlign: 'right' },
-  button: {
-    backgroundColor: Colors.brandPrimary,
-    borderRadius: 12,
-    paddingVertical: 15,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: { opacity: 0.5 },
-  buttonText: { color: Colors.textOnDark, fontSize: 16, fontWeight: '700' },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 28 },
-  footerText: { color: Colors.textMuted, fontSize: 14 },
-  footerLink: { color: Colors.brandPrimaryDark, fontSize: 14, fontWeight: '700' },
+  oublie: { alignItems: 'flex-end', marginBottom: 24 },
+  oublieLien: { fontFamily: police.normal, fontSize: tailleTexte.xs, color: couleurs.marqueFoncee, textDecorationLine: 'underline' },
 });

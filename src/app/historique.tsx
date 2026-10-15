@@ -1,114 +1,153 @@
-import { Ionicons } from '@expo/vector-icons';
-import { Stack, useFocusEffect, useRouter } from 'expo-router';
-import { Timestamp } from 'firebase/firestore';
-import { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+/**
+ * HISTORIQUE COMPLET — reproduit `pages/historique.html` + `js/pages/historique.js` :
+ * barre du haut (retour + « Historique complet »), puis jusqu'à 100 produits scannés,
+ * le plus récent d'abord, avec leur date. Écran plein, sans barre de navigation.
+ */
+import { Stack, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/colors';
 import { useAuth } from '@/contexts/auth';
+import { Icone } from '@/design/icones';
+import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { chargerHistorique, type HistoriqueItem } from '@/services/historique';
 
-const MOIS = [
-  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
-];
+// Date en toutes lettres, comme en ligne : « 15 octobre 2026 ».
+function dateEnLettres(item: HistoriqueItem): string {
+  const d = item.date?.toDate?.();
+  if (!d) return '';
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
 
-function formatDate(ts?: Timestamp): string {
-  if (!ts || typeof ts.toDate !== 'function') return '';
-  const d = ts.toDate();
-  return `${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+function Squelette() {
+  const opacite = useRef(new Animated.Value(0.5)).current;
+  useEffect(() => {
+    const boucle = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacite, { toValue: 1, duration: 750, useNativeDriver: true }),
+        Animated.timing(opacite, { toValue: 0.5, duration: 750, useNativeDriver: true }),
+      ]),
+    );
+    boucle.start();
+    return () => boucle.stop();
+  }, [opacite]);
+  return <Animated.View style={[styles.squelette, { opacity: opacite }]} />;
 }
 
 export default function HistoriqueScreen() {
-  const { user } = useAuth();
   const router = useRouter();
-  const [items, setItems] = useState<HistoriqueItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  const marges = useSafeAreaInsets();
+  const [items, setItems] = useState<HistoriqueItem[] | null>(null);
+  const [erreur, setErreur] = useState(false);
 
-  const charger = useCallback(async () => {
+  useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    try {
-      setItems(await chargerHistorique(user.uid, 100));
-    } catch {
-      // silencieux
-    } finally {
-      setLoading(false);
-    }
+    let actif = true;
+    chargerHistorique(user.uid, 100)
+      .then((h) => actif && setItems(h))
+      .catch(() => actif && setErreur(true));
+    return () => {
+      actif = false;
+    };
   }, [user]);
 
-  useFocusEffect(
-    useCallback(() => {
-      charger();
-    }, [charger]),
-  );
-
   return (
-    <View style={styles.flex}>
-      <Stack.Screen options={{ headerShown: true, title: 'Historique complet' }} />
-      <FlatList
-        data={items}
-        keyExtractor={(item) => item.ean}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={charger} tintColor={Colors.brandPrimary} />}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.empty}>
-              <Ionicons name="time-outline" size={48} color={Colors.textLight} />
-              <Text style={styles.emptyText}>Votre historique est vide.</Text>
-            </View>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.row}
-            onPress={() => router.push(`/produit/${item.ean}`)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.icon}>
-              <Ionicons name="cube-outline" size={22} color={Colors.brandPrimaryDark} />
-            </View>
-            <View style={styles.rowTextWrap}>
-              <Text style={styles.rowName} numberOfLines={1}>
-                {item.nom}
-              </Text>
-              <Text style={styles.rowDate} numberOfLines={1}>
-                {formatDate(item.date)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
-          </TouchableOpacity>
+    <View style={styles.page}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* .history-header */}
+      <View style={[styles.entete, { paddingTop: Math.max(16, marges.top) }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profil'))}
+          style={styles.retour}
+        >
+          <Icone nom="arrow_back" taille={24} couleur={couleurs.texte} />
+        </Pressable>
+        <Text style={styles.titre}>Historique complet</Text>
+      </View>
+
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.liste}>
+        {erreur ? (
+          <Text style={styles.erreur}>Erreur lors du chargement de l'historique.</Text>
+        ) : items === null ? (
+          <>
+            <Squelette />
+            <Squelette />
+            <Squelette />
+            <Squelette />
+          </>
+        ) : items.length === 0 ? (
+          <View style={styles.vide}>
+            <Icone nom="history" taille={48} couleur={couleurs.texteDiscret} />
+            <Text style={styles.videTexte}>Votre historique est vide.</Text>
+          </View>
+        ) : (
+          items.map((h) => (
+            <Pressable
+              key={h.ean}
+              accessibilityRole="button"
+              onPress={() => router.push(`/produit/${encodeURIComponent(h.ean)}`)}
+              style={({ pressed }) => [styles.ligne, pressed && { backgroundColor: couleurs.fondGris }]}
+            >
+              <View style={styles.ligneIcone}>
+                <Icone nom="package_2" taille={24} couleur={couleurs.texteAttenue} />
+              </View>
+              <View style={styles.ligneInfo}>
+                <Text style={styles.ligneNom} numberOfLines={1}>
+                  {h.nom || 'Produit inconnu'}
+                </Text>
+                <Text style={styles.ligneDate} numberOfLines={1}>
+                  {dateEnLettres(h)}
+                </Text>
+              </View>
+              <Icone nom="chevron_right" taille={24} couleur={couleurs.texteDiscret} />
+            </Pressable>
+          ))
         )}
-      />
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Colors.bgApp },
-  list: { padding: 20, paddingBottom: 40 },
-  empty: { alignItems: 'center', marginTop: 60, gap: 12 },
-  emptyText: { color: Colors.textMuted, fontSize: 15 },
-  row: {
+  page: { flex: 1, backgroundColor: couleurs.fondCarte },
+  entete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    backgroundColor: couleurs.fondCarte,
+    borderBottomWidth: 1,
+    borderBottomColor: couleurs.bordure,
+    zIndex: 100,
+  },
+  // .btn-back-history
+  retour: { width: 40, height: 40, borderRadius: rayon.sm, backgroundColor: couleurs.fondApp, alignItems: 'center', justifyContent: 'center' },
+  // .header-title
+  titre: { fontFamily: police.noir, fontSize: tailleTexte.xl2, lineHeight: 24, color: couleurs.texte },
+  // .history-list-container + .history-item
+  liste: { padding: 16, gap: 12 },
+  ligne: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: Colors.bgSurface,
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
+    backgroundColor: couleurs.fondCarte,
     borderWidth: 1,
-    borderColor: Colors.borderDefault,
+    borderColor: couleurs.bordure,
+    borderRadius: rayon.md,
+    padding: 12,
   },
-  icon: {
-    width: 42,
-    height: 42,
-    borderRadius: 10,
-    backgroundColor: Colors.brandPrimaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowTextWrap: { flex: 1 },
-  rowName: { fontSize: 15, fontWeight: '600', color: Colors.textDark },
-  rowDate: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
+  ligneIcone: { width: 40, height: 40, borderRadius: rayon.sm, backgroundColor: couleurs.fondApp, alignItems: 'center', justifyContent: 'center' },
+  ligneInfo: { flex: 1 },
+  ligneNom: { fontFamily: police.gras, fontSize: tailleTexte.md, color: couleurs.texte },
+  ligneDate: { fontFamily: police.normal, fontSize: tailleTexte.xs, color: couleurs.texteAttenue },
+  squelette: { height: 66, borderRadius: rayon.sm, backgroundColor: couleurs.bordure },
+  vide: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+  videTexte: { fontFamily: police.normal, fontSize: tailleTexte.base, color: couleurs.texteAttenue, marginTop: 16 },
+  erreur: { fontFamily: police.normal, fontSize: tailleTexte.base, color: couleurs.texteAttenue, textAlign: 'center', marginTop: 32 },
 });

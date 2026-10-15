@@ -12,8 +12,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { CadreMobile } from '@/components/ui/cadre-mobile';
+import { UiProvider } from '@/components/ui/ui-provider';
 import { AuthProvider } from '@/contexts/auth';
+import { couleurs } from '@/design/tokens';
 
 // On garde l'écran de démarrage tant que les polices ne sont pas chargées,
 // pour ne jamais montrer un texte dans une police de secours (même visuel que le site).
@@ -42,12 +46,19 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <StatusBar style="dark" />
-        {/* Les routes sont auto-découvertes : index (dispatcher), (auth), (tabs),
-            produit/[ean], guide/[type]. En-têtes gérés écran par écran. */}
-        <Stack screenOptions={{ headerShown: false }} />
-      </AuthProvider>
+      <SafeAreaProvider>
+        {/* Sur ordinateur : cadre « téléphone » 390 × 844 comme la version en ligne. */}
+        <CadreMobile>
+          <AuthProvider>
+            <UiProvider>
+              <StatusBar style="dark" />
+              {/* Les routes sont auto-découvertes : index (dispatcher), (auth), (tabs), onboarding,
+                  produit/[ean], guide/[type], historique, indisponible. */}
+              <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: couleurs.fondCarte } }} />
+            </UiProvider>
+          </AuthProvider>
+        </CadreMobile>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

@@ -1,212 +1,300 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+/**
+ * RECHERCHE — reproduit `pages/recherche.html` + `js/pages/recherche.js` :
+ * barre de recherche verte, recherches récentes (historique), suggestions en direct
+ * (5 résultats, délai de 300 ms), recherche complète à la validation.
+ */
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/colors';
+import { BoutonPrimaire, BoutonSecondaire } from '@/components/ui/boutons';
+import { useUi } from '@/components/ui/ui-provider';
 import { useAuth } from '@/contexts/auth';
+import { Icone } from '@/design/icones';
+import { couleurs, ombre, police, rayon, tailleTexte } from '@/design/tokens';
 import { rechercherProduitParTexte } from '@/services/api';
+import { ecrireProduitCache } from '@/services/cache';
 import { chargerHistorique, type HistoriqueItem } from '@/services/historique';
+
+/** Une ligne de liste (`.list-item`) : icône carrée, nom, marque, chevron facultatif. */
+function LigneProduit({ icone, nom, marque, chevron, onPress }: { icone: string; nom: string; marque: string; chevron?: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.ligne, pressed && { backgroundColor: couleurs.fondGris }]}
+    >
+      <View style={styles.ligneIcone}>
+        <Icone nom={icone} taille={24} couleur={couleurs.texteAttenue} />
+      </View>
+      <View style={styles.ligneInfo}>
+        <Text style={styles.ligneNom} numberOfLines={1}>
+          {nom}
+        </Text>
+        <Text style={styles.ligneMarque} numberOfLines={1}>
+          {marque}
+        </Text>
+      </View>
+      {chevron ? <Icone nom="chevron_right" taille={24} couleur={couleurs.bordure} /> : null}
+    </Pressable>
+  );
+}
+
+/** Squelette d'une ligne pendant le chargement (`.skeleton-item`, 66 px). */
+function Squelette() {
+  const opacite = useRef(new Animated.Value(0.5)).current;
+  useEffect(() => {
+    const boucle = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacite, { toValue: 1, duration: 750, useNativeDriver: true }),
+        Animated.timing(opacite, { toValue: 0.5, duration: 750, useNativeDriver: true }),
+      ]),
+    );
+    boucle.start();
+    return () => boucle.stop();
+  }, [opacite]);
+  return <Animated.View style={[styles.squelette, { opacity: opacite }]} />;
+}
 
 export default function RechercheScreen() {
   const router = useRouter();
+  const ui = useUi();
   const { user } = useAuth();
-  const inputRef = useRef<TextInput>(null);
-  const reqId = useRef(0);
+  const marges = useSafeAreaInsets();
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const champ = useRef<TextInput>(null);
+  const minuteur = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Évite qu'une ancienne réponse écrase une plus récente.
+  const numeroRequete = useRef(0);
 
   const [terme, setTerme] = useState('');
+  // 'recents' : état initial · 'live' : suggestions · 'complet' : tous les résultats
+  const [mode, setMode] = useState<'recents' | 'live' | 'complet'>('recents');
   const [resultats, setResultats] = useState<any[]>([]);
-  const [chargement, setChargement] = useState(false);
-  const [recherchee, setRecherchee] = useState(false);
-  const [montrerTout, setMontrerTout] = useState(false);
-  const [recents, setRecents] = useState<HistoriqueItem[]>([]);
+  const [enChargement, setEnChargement] = useState(false);
+  const [recents, setRecents] = useState<HistoriqueItem[] | null>(null);
+  const [erreurRecents, setErreurRecents] = useState(false);
 
-  // Focus auto + chargement des recherches récentes à l'arrivée sur l'onglet.
+  // Recherches récentes + focus automatique à chaque arrivée sur l'onglet.
   useFocusEffect(
     useCallback(() => {
-      const t = setTimeout(() => inputRef.current?.focus(), 250);
+      const t = setTimeout(() => champ.current?.focus(), 100);
       let actif = true;
       if (user) {
-        chargerHistorique(user.uid, 10).then((h) => actif && setRecents(h)).catch(() => {});
+        setRecents(null);
+        chargerHistorique(user.uid, 10)
+          .then((h) => {
+            if (!actif) return;
+            setRecents(h);
+            setErreurRecents(false);
+          })
+          .catch(() => actif && setErreurRecents(true));
       }
       return () => {
-        clearTimeout(t);
         actif = false;
+        clearTimeout(t);
       };
     }, [user]),
   );
 
+  const ouvrirProduit = (p: any) => {
+    // Le produit est mis en mémoire : la fiche s'ouvre instantanément (équivalent du sessionStorage en ligne).
+    ecrireProduitCache(p.ean, p);
+    router.push(`/produit/${encodeURIComponent(p.ean)}`);
+  };
+
+  // Recherche en direct : 5 résultats max, sans écran de chargement.
+  const chercherEnDirect = async (valeur: string) => {
+    const n = ++numeroRequete.current;
+    setMode('live');
+    setEnChargement(true);
+    const r = await rechercherProduitParTexte(valeur);
+    if (n !== numeroRequete.current) return;
+    setResultats(r ?? []);
+    setEnChargement(false);
+  };
+
+  // Recherche complète : écran de chargement + tous les résultats.
+  const chercherTout = async (valeur: string) => {
+    const n = ++numeroRequete.current;
+    ui.chargement('Recherche en cours...');
+    setMode('complet');
+    const r = await rechercherProduitParTexte(valeur);
+    ui.chargement(null);
+    if (n !== numeroRequete.current) return;
+    setResultats(r ?? []);
+    setEnChargement(false);
+  };
+
+  // Arrivée depuis un scan sans résultat : la recherche part toute seule.
   useEffect(() => {
-    const t = terme.trim();
-    setMontrerTout(false);
-    if (t.length === 0) {
-      setResultats([]);
-      setRecherchee(false);
-      setChargement(false);
+    if (q) {
+      setTerme(String(q));
+      chercherTout(String(q));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  const surSaisie = (valeur: string) => {
+    setTerme(valeur);
+    if (minuteur.current) clearTimeout(minuteur.current);
+    const net = valeur.trim();
+    if (net.length === 0) {
+      setMode('recents');
       return;
     }
-    setChargement(true);
-    const timer = setTimeout(async () => {
-      const monId = ++reqId.current;
-      const r = await rechercherProduitParTexte(t);
-      if (monId !== reqId.current) return;
-      setResultats(Array.isArray(r) ? r : []);
-      setChargement(false);
-      setRecherchee(true);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [terme]);
+    minuteur.current = setTimeout(() => chercherEnDirect(net), 300);
+  };
 
-  function ligneProduit(nom: string, sous: string, ean: string, icon: keyof typeof Ionicons.glyphMap) {
-    return (
-      <TouchableOpacity
-        style={styles.row}
-        onPress={() => router.push(`/produit/${encodeURIComponent(ean)}`)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.icon}>
-          <Ionicons name={icon} size={20} color={Colors.brandPrimaryDark} />
-        </View>
-        <View style={styles.rowTextWrap}>
-          <Text style={styles.rowName} numberOfLines={1}>
-            {nom}
-          </Text>
-          <Text style={styles.rowBrand} numberOfLines={1}>
-            {sous}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
-      </TouchableOpacity>
-    );
-  }
+  const effacer = () => {
+    setTerme('');
+    setMode('recents');
+    champ.current?.focus();
+  };
 
-  const champVide = terme.trim().length === 0;
-  const affichage = montrerTout ? resultats : resultats.slice(0, 5);
+  const valider = () => {
+    const net = terme.trim();
+    if (net.length > 0) {
+      if (minuteur.current) clearTimeout(minuteur.current);
+      chercherTout(net);
+    }
+  };
+
+  const affiches = mode === 'live' ? resultats.slice(0, 5) : resultats;
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top']}>
-      <Text style={styles.title}>Rechercher</Text>
-
-      <View style={styles.searchBar}>
-        <Ionicons name="search" size={20} color={Colors.textMuted} />
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          value={terme}
-          onChangeText={setTerme}
-          placeholder="Nom d’un produit, une marque…"
-          placeholderTextColor={Colors.textLight}
-          autoCorrect={false}
-          returnKeyType="search"
-        />
-        {terme.length > 0 ? (
-          <TouchableOpacity onPress={() => setTerme('')}>
-            <Ionicons name="close-circle" size={20} color={Colors.textLight} />
-          </TouchableOpacity>
-        ) : null}
+    <View style={styles.page}>
+      {/* .search-header */}
+      <View style={[styles.entete, { paddingTop: 24 + marges.top }]}>
+        <View style={styles.barre}>
+          <Icone nom="search" taille={24} couleur={couleurs.texteAttenue} />
+          <TextInput
+            ref={champ}
+            value={terme}
+            onChangeText={surSaisie}
+            onSubmitEditing={valider}
+            returnKeyType="search"
+            autoComplete="off"
+            autoCorrect={false}
+            placeholder="Rechercher un produit, une marque..."
+            placeholderTextColor={couleurs.texteDiscret}
+            style={styles.saisie}
+            accessibilityLabel="Rechercher un produit, une marque"
+          />
+          {terme.length > 0 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Effacer la recherche" onPress={effacer} style={styles.bouton}>
+              <Icone nom="close" taille={24} couleur={couleurs.texteDiscret} />
+            </Pressable>
+          ) : null}
+          <Pressable accessibilityRole="button" accessibilityLabel="Lancer la recherche" onPress={valider} style={styles.bouton}>
+            <Icone nom="arrow_forward" taille={24} couleur={couleurs.marque} />
+          </Pressable>
+        </View>
       </View>
 
-      {champVide ? (
-        <FlatList
-          data={recents}
-          keyExtractor={(item) => item.ean}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            recents.length > 0 ? <Text style={styles.recentTitle}>Recherches récentes</Text> : null
-          }
-          ListEmptyComponent={
-            <Text style={styles.hint}>
-              Aucune recherche pour l’instant. Scannez ou recherchez un produit pour commencer.
-            </Text>
-          }
-          renderItem={({ item }) => ligneProduit(item.nom, item.marque, item.ean, 'time-outline')}
-        />
-      ) : chargement ? (
-        <ActivityIndicator style={styles.loader} size="large" color={Colors.brandPrimary} />
-      ) : recherchee && resultats.length === 0 ? (
-        <View style={styles.empty}>
-          <Ionicons name="search-outline" size={48} color={Colors.textLight} />
-          <Text style={styles.emptyText}>Aucun produit trouvé pour cette recherche.</Text>
-          <TouchableOpacity style={styles.scanBtn} onPress={() => router.push('/(tabs)/scan')}>
-            <Text style={styles.scanBtnText}>Scanner un produit</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <FlatList
-          data={affichage}
-          keyExtractor={(item, i) => `${item.ean || 'x'}-${i}`}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => ligneProduit(item.nom, item.marque, item.ean, 'cube-outline')}
-          ListFooterComponent={
-            !montrerTout && resultats.length > 5 ? (
-              <TouchableOpacity style={styles.voirTout} onPress={() => setMontrerTout(true)}>
-                <Text style={styles.voirToutText}>Voir tous les résultats ({resultats.length})</Text>
-              </TouchableOpacity>
-            ) : null
-          }
-        />
-      )}
-    </SafeAreaView>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.resultats} keyboardShouldPersistTaps="handled">
+        {mode === 'recents' ? (
+          <View>
+            {/* Le titre disparaît quand il n'y a aucun historique (.recent-no-history) */}
+            {!(recents && recents.length === 0) ? <Text style={styles.titre}>Recherches récentes</Text> : null}
+            {recents === null && !erreurRecents ? <Squelette /> : null}
+            {erreurRecents ? <Text style={styles.texteAttenue}>Erreur lors du chargement des recherches récentes.</Text> : null}
+            {recents && recents.length === 0 ? (
+              <Text style={styles.vide}>Aucune recherche pour l'instant. Scannez ou recherchez un produit pour commencer.</Text>
+            ) : null}
+            {recents?.map((h) => (
+              <LigneProduit
+                key={h.ean}
+                icone="history"
+                nom={h.nom || 'Produit inconnu'}
+                marque={h.marque || ''}
+                chevron
+                onPress={() => router.push(`/produit/${encodeURIComponent(h.ean)}`)}
+              />
+            ))}
+          </View>
+        ) : (
+          <View>
+            {enChargement && resultats.length === 0 ? <Squelette /> : null}
+            {!enChargement && affiches.length === 0 ? (
+              <View style={styles.aucun}>
+                <Icone nom="search_off" taille={48} couleur={couleurs.texteDiscret} />
+                <Text style={styles.aucunTexte}>Aucun produit trouvé pour cette recherche.</Text>
+                <BoutonPrimaire style={{ marginTop: 16 }} onPress={() => router.push('/(tabs)/scan')}>
+                  Scanner un produit
+                </BoutonPrimaire>
+              </View>
+            ) : null}
+            {affiches.map((p) => (
+              <LigneProduit key={p.ean} icone="package_2" nom={p.nom} marque={p.marque} onPress={() => ouvrirProduit(p)} />
+            ))}
+            {mode === 'live' && resultats.length > 5 ? (
+              <BoutonSecondaire style={{ marginTop: 8 }} onPress={() => chercherTout(terme.trim())}>
+                {`Voir tous les résultats (${resultats.length})`}
+              </BoutonSecondaire>
+            ) : null}
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: Colors.bgApp },
-  title: { fontSize: 26, fontWeight: '800', color: Colors.textDark, paddingHorizontal: 16, paddingTop: 12 },
-  searchBar: {
+  page: { flex: 1, backgroundColor: couleurs.fondCarte },
+  entete: { paddingHorizontal: 16, paddingBottom: 16, backgroundColor: couleurs.fondCarte, zIndex: 100 },
+  // .search-bar
+  barre: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: Colors.bgSurface,
-    margin: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: Colors.borderDefault,
+    backgroundColor: couleurs.fondCarte,
+    borderWidth: 2,
+    borderColor: couleurs.marque,
+    borderRadius: rayon.lg,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    boxShadow: ombre.recherche,
   },
-  input: { flex: 1, fontSize: 16, color: Colors.textDark },
-  recentTitle: { fontSize: 13, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-  hint: { color: Colors.textMuted, fontSize: 14, textAlign: 'center', marginTop: 24, paddingHorizontal: 20 },
-  loader: { marginTop: 40 },
-  empty: { alignItems: 'center', marginTop: 50, paddingHorizontal: 30, gap: 12 },
-  emptyText: { color: Colors.textMuted, fontSize: 15, textAlign: 'center' },
-  scanBtn: { backgroundColor: Colors.brandPrimary, borderRadius: 12, paddingVertical: 13, paddingHorizontal: 22, marginTop: 8 },
-  scanBtnText: { color: Colors.textOnDark, fontWeight: '700', fontSize: 15 },
-  list: { paddingHorizontal: 16, paddingBottom: 40 },
-  row: {
+  saisie: {
+    flex: 1,
+    padding: 8,
+    fontFamily: police.normal,
+    fontSize: tailleTexte.md,
+    color: couleurs.texte,
+    outlineStyle: 'none',
+  } as any,
+  bouton: { padding: 4, alignItems: 'center', justifyContent: 'center' },
+  resultats: { paddingVertical: 8, paddingHorizontal: 16, paddingBottom: 24 },
+  // .section-title (avec son propre retrait de 16 px, comme en ligne)
+  titre: { fontFamily: police.extraGras, fontSize: tailleTexte.xl, color: couleurs.marqueSombre, marginBottom: 16, paddingHorizontal: 16 },
+  // .list-item
+  ligne: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: Colors.bgSurface,
-    borderRadius: 14,
     padding: 12,
-    marginBottom: 10,
+    backgroundColor: couleurs.fondCarte,
     borderWidth: 1,
-    borderColor: Colors.borderDefault,
+    borderColor: couleurs.bordure,
+    borderRadius: rayon.md,
+    marginBottom: 12,
   },
-  icon: {
+  ligneIcone: {
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: Colors.brandPrimaryLight,
+    borderRadius: rayon.sm,
+    backgroundColor: couleurs.fondApp,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
-  rowTextWrap: { flex: 1 },
-  rowName: { fontSize: 15, fontWeight: '600', color: Colors.textDark },
-  rowBrand: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
-  voirTout: { paddingVertical: 14, alignItems: 'center' },
-  voirToutText: { color: Colors.brandPrimaryDark, fontWeight: '700', fontSize: 14 },
+  ligneInfo: { flex: 1 },
+  ligneNom: { fontFamily: police.gras, fontSize: tailleTexte.md, color: couleurs.texte },
+  ligneMarque: { fontFamily: police.normal, fontSize: tailleTexte.xs, color: couleurs.texteAttenue },
+  squelette: { height: 66, borderRadius: rayon.sm, backgroundColor: couleurs.bordure, marginBottom: 12 },
+  vide: { fontFamily: police.normal, fontSize: tailleTexte.sm, color: couleurs.texteAttenue },
+  texteAttenue: { fontFamily: police.normal, fontSize: tailleTexte.base, color: couleurs.texteAttenue },
+  // .empty-state
+  aucun: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 16 },
+  aucunTexte: { fontFamily: police.normal, fontSize: tailleTexte.base, color: couleurs.texteAttenue, textAlign: 'center', marginTop: 16 },
 });
