@@ -1,14 +1,20 @@
 /**
- * SCANNER — reproduit `pages/scan.html` + `js/pages/scan.js` :
- * caméra plein écran, bouton retour, cadre de visée (proportion 1,618) avec quatre
- * coins, laser vert qui monte et descend, texte d'aide. Mêmes fenêtres d'autorisation
- * de la caméra qu'en ligne, mêmes messages, même suite après un scan.
+ * SCANNER — reproduit `pages/scan.html` + `js/pages/scan.js` de la version en ligne,
+ * tel qu'il s'affiche RÉELLEMENT (mesuré sur un téléphone, pas déduit du CSS) :
+ *   - caméra plein écran ;
+ *   - carré de visée de 300 px, centré, entouré d'une zone ombrée à 48 % ;
+ *   - quatre coins blancs (traits de 5 px, bras de 40 px) posés juste hors du carré ;
+ *   - pas de laser, pas de halo : ils existent dans l'ancien CSS mais plus dans la page ;
+ *   - le texte d'aide au centre de l'écran ;
+ *   - bouton retour en haut à gauche.
+ * Mêmes fenêtres d'autorisation de la caméra qu'en ligne, mêmes messages, même suite
+ * après un scan.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { Stack, useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, Vibration, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, Text, Vibration, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUi } from '@/components/ui/ui-provider';
@@ -19,7 +25,12 @@ import { ecrireProduitCache } from '@/services/cache';
 
 const CLE_PERMISSION = 'camera_permission';
 const TEXTE_ATTENTE = 'Pointez la caméra vers un code-barre';
-const RAPPORT = 1.618; // largeur / hauteur du cadre de visée
+
+// Mesures relevées sur la version en ligne (en pixels CSS).
+const COTE_VISEE = 300; // carré de visée
+const EPAISSEUR_COIN = 5; // épaisseur des coins blancs
+const BRAS_COIN = 40; // longueur des bras des coins
+const OMBRE = 'rgba(0, 0, 0, 0.48)'; // zone ombrée autour du carré
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -31,23 +42,9 @@ export default function ScanScreen() {
   const [camera, setCamera] = useState(false); // la caméra tourne-t-elle ?
   const [texte, setTexte] = useState(TEXTE_ATTENTE);
   const [zone, setZone] = useState({ largeur: 0, hauteur: 0 }); // taille de l'écran
-  const [boite, setBoite] = useState({ x: 0, y: 0, largeur: 0, hauteur: 0 }); // cadre de visée
   const enTraitement = useRef(false);
-  const laser = useRef(new Animated.Value(0)).current;
 
   const retour = useCallback(() => (router.canGoBack() ? router.back() : router.replace('/(tabs)')), [router]);
-
-  // --- Laser : 4 s de haut en bas, puis de bas en haut, sans fin ---
-  useEffect(() => {
-    const boucle = Animated.loop(
-      Animated.sequence([
-        Animated.timing(laser, { toValue: 1, duration: 4000, easing: Easing.linear, useNativeDriver: true }),
-        Animated.timing(laser, { toValue: 0, duration: 4000, easing: Easing.linear, useNativeDriver: true }),
-      ]),
-    );
-    boucle.start();
-    return () => boucle.stop();
-  }, [laser]);
 
   // --- Autorisations de la caméra (mêmes fenêtres et mêmes textes qu'en ligne) ---
   const demander = useCallback(async () => {
@@ -59,7 +56,7 @@ export default function ScanScreen() {
       await AsyncStorage.setItem(CLE_PERMISSION, 'denied');
       ui.informer({
         titre: "Erreur d'accès",
-        message: 'Impossible d\'accéder à la caméra. Veuillez vérifier vos paramètres système.',
+        message: "Impossible d'accéder à la caméra. Veuillez vérifier vos paramètres système.",
         bouton: 'Compris',
         onFermer: retour,
       });
@@ -152,14 +149,14 @@ export default function ScanScreen() {
     }
   };
 
-  // --- Dimensions : le cadre fait 82 % de la largeur, entre 240 et 320 px ---
-  const largeurCadre = Math.min(320, Math.max(240, zone.largeur * 0.82));
-  const hauteurCadre = largeurCadre / RAPPORT;
+  // --- Position du carré de visée : 300 px, centré (réduit si l'écran est plus étroit) ---
   const surZone = (e: LayoutChangeEvent) => setZone({ largeur: e.nativeEvent.layout.width, hauteur: e.nativeEvent.layout.height });
-  const surBoite = (e: LayoutChangeEvent) => {
-    const { x, y, width, height } = e.nativeEvent.layout;
-    setBoite({ x, y, largeur: width, hauteur: height });
-  };
+  const cote = Math.min(COTE_VISEE, Math.max(0, zone.largeur - 24));
+  const gauche = (zone.largeur - cote) / 2;
+  const haut = (zone.hauteur - cote) / 2;
+  const prete = zone.largeur > 0 && zone.hauteur > 0;
+  const e = EPAISSEUR_COIN;
+  const b = BRAS_COIN;
 
   return (
     <View style={styles.page} onLayout={surZone}>
@@ -175,30 +172,32 @@ export default function ScanScreen() {
         />
       ) : null}
 
-      {/* Voile sombre autour du cadre de visée (l'équivalent de `outline: 9999px`) */}
-      {boite.largeur > 0 ? (
+      {prete ? (
         <>
-          <View pointerEvents="none" style={[styles.voile, { top: 0, left: 0, right: 0, height: boite.y }]} />
-          <View pointerEvents="none" style={[styles.voile, { top: boite.y + boite.hauteur, left: 0, right: 0, bottom: 0 }]} />
-          <View pointerEvents="none" style={[styles.voile, { top: boite.y, left: 0, width: boite.x, height: boite.hauteur }]} />
-          <View pointerEvents="none" style={[styles.voile, { top: boite.y, left: boite.x + boite.largeur, right: 0, height: boite.hauteur }]} />
+          {/* Zone ombrée autour du carré (#qr-shaded-region) */}
+          <View pointerEvents="none" style={[styles.ombre, { top: 0, left: 0, right: 0, height: haut }]} />
+          <View pointerEvents="none" style={[styles.ombre, { top: haut + cote, left: 0, right: 0, bottom: 0 }]} />
+          <View pointerEvents="none" style={[styles.ombre, { top: haut, left: 0, width: gauche, height: cote }]} />
+          <View pointerEvents="none" style={[styles.ombre, { top: haut, left: gauche + cote, right: 0, height: cote }]} />
+
+          {/* Quatre coins blancs : le « L » est posé juste hors du carré */}
+          {/* haut-gauche */}
+          <View pointerEvents="none" style={[styles.coin, { left: gauche, top: haut - e, width: b, height: e }]} />
+          <View pointerEvents="none" style={[styles.coin, { left: gauche - e, top: haut - e, width: e, height: b + e }]} />
+          {/* haut-droite */}
+          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote - b, top: haut - e, width: b, height: e }]} />
+          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote, top: haut - e, width: e, height: b + e }]} />
+          {/* bas-gauche */}
+          <View pointerEvents="none" style={[styles.coin, { left: gauche, top: haut + cote, width: b, height: e }]} />
+          <View pointerEvents="none" style={[styles.coin, { left: gauche - e, top: haut + cote - b, width: e, height: b + e }]} />
+          {/* bas-droite */}
+          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote - b, top: haut + cote, width: b, height: e }]} />
+          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote, top: haut + cote - b, width: e, height: b + e }]} />
         </>
       ) : null}
 
-      {/* .scan-ui-layer : cadre de visée + texte, centrés */}
+      {/* .scan-ui-layer : le texte d'aide, au centre de l'écran */}
       <View pointerEvents="none" style={styles.couche}>
-        <View onLayout={surBoite} style={[styles.cadre, { width: largeurCadre, height: hauteurCadre }]}>
-          <View style={[styles.coin, styles.coinHG]} />
-          <View style={[styles.coin, styles.coinHD]} />
-          <View style={[styles.coin, styles.coinBG]} />
-          <View style={[styles.coin, styles.coinBD]} />
-          <Animated.View
-            style={[
-              styles.laser,
-              { transform: [{ translateY: laser.interpolate({ inputRange: [0, 1], outputRange: [0, hauteurCadre - 2] }) }] },
-            ]}
-          />
-        </View>
         <Text style={styles.texte}>{texte}</Text>
       </View>
 
@@ -217,36 +216,12 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
-  voile: { position: 'absolute', backgroundColor: couleurs.voileMoyen },
+  ombre: { position: 'absolute', backgroundColor: OMBRE },
+  coin: { position: 'absolute', backgroundColor: '#FFFFFF', zIndex: 5 },
+  // .scan-ui-layer : texte centré sur tout l'écran
   couche: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
-  // .targeting-box : bordure blanche + halo lumineux
-  cadre: {
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: rayon.sm,
-    overflow: 'hidden',
-    boxShadow: '0 0 8px 2px rgba(255,255,255,0.8), 0 0 20px 6px rgba(255,255,255,0.4), 0 0 40px 12px rgba(255,255,255,0.15)',
-  } as any,
-  // .corner : angles de 30 px, trait de 4 px
-  coin: { position: 'absolute', width: 30, height: 30, borderColor: '#FFFFFF', zIndex: 5 },
-  coinHG: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: rayon.sm },
-  coinHD: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: rayon.sm },
-  coinBG: { bottom: 0, left: 0, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: rayon.sm },
-  coinBD: { bottom: 0, right: 0, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: rayon.sm },
-  // .laser
-  laser: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: 2,
-    backgroundColor: couleurs.marque,
-    boxShadow: `0 0 10px ${couleurs.marque}`,
-    zIndex: 2,
-  } as any,
   // .scan-text
   texte: {
-    marginTop: 32,
     fontFamily: police.semiGras,
     fontSize: tailleTexte.md,
     color: '#FFFFFF',
