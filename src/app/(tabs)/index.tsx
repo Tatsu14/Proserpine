@@ -3,6 +3,7 @@
  * en-tête sombre avec salutation selon l'heure, deux classements (produits les plus
  * scannés, meilleurs scores), conseil du jour.
  */
+import { setStatusBarStyle } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -103,6 +104,14 @@ function GrilleVide({ message }: { message: string }) {
 export default function AccueilScreen() {
   const { user } = useAuth();
   const router = useRouter();
+
+  // En-tête sombre : icônes de la barre d'état en clair (sinon heure et batterie sont noires sur fond sombre).
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('light');
+      return () => setStatusBarStyle('dark');
+    }, []),
+  );
   const [pseudo, setPseudo] = useState('...');
   const [plusScannes, setPlusScannes] = useState<HistoriqueItem[]>([]);
   const [meilleursScores, setMeilleursScores] = useState<HistoriqueItem[]>([]);

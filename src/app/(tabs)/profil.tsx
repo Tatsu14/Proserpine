@@ -6,6 +6,7 @@
  * Comme en ligne, « Modifier mes informations » et « Paramètres » mènent à la page
  * « Fonctionnalité en cours de développement ».
  */
+import { setStatusBarStyle } from 'expo-status-bar';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -39,6 +40,14 @@ function LigneMenu({ icone, libelle, droite, onPress }: { icone: string; libelle
 export default function ProfilScreen() {
   const { user } = useAuth();
   const router = useRouter();
+
+  // En-tête sombre : icônes de la barre d'état en clair (sinon heure et batterie sont noires sur fond sombre).
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('light');
+      return () => setStatusBarStyle('dark');
+    }, []),
+  );
   const ui = useUi();
   const [pseudo, setPseudo] = useState('Chargement...');
 

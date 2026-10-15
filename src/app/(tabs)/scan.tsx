@@ -13,6 +13,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { Stack, useIsFocused, useRouter } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Vibration, View, type LayoutChangeEvent } from 'react-native';
 import { Text } from '@/components/ui/texte';
@@ -44,6 +45,13 @@ export default function ScanScreen() {
   const [texte, setTexte] = useState(TEXTE_ATTENTE);
   const [zone, setZone] = useState({ largeur: 0, hauteur: 0 }); // taille de l'écran
   const enTraitement = useRef(false);
+
+  // Fond noir : icônes de la barre d'état en clair tant que le scanner est affiché.
+  useEffect(() => {
+    if (!enFocus) return;
+    setStatusBarStyle('light');
+    return () => setStatusBarStyle('dark');
+  }, [enFocus]);
 
   const retour = useCallback(() => (router.canGoBack() ? router.back() : router.replace('/(tabs)')), [router]);
 

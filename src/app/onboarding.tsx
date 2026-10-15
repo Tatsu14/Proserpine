@@ -5,6 +5,7 @@
  */
 import { Image } from 'expo-image';
 import { Redirect, Stack, useRouter } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from '@/components/ui/texte';
@@ -26,6 +27,11 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const { user, initializing } = useAuth();
   const marges = useSafeAreaInsets();
+  // Fond sombre : icônes de la barre d'état en clair.
+  useEffect(() => {
+    setStatusBarStyle('light');
+    return () => setStatusBarStyle('dark');
+  }, []);
   // null = on vérifie encore si l'onboarding a déjà été vu.
   const [dejaVu, setDejaVu] = useState<boolean | null>(null);
 
