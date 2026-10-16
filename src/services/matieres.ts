@@ -4,7 +4,8 @@
  * Quand l'application ne sait rien de l'emballage, l'utilisateur répond lui-même. Une seule
  * question (« Carton, papier ») ne sert à rien : la réponse est évidente. L'intérêt est dans
  * les cas où l'on se trompe vraiment : un carton gras ne va PAS au papier, une brique de lait
- * va au sac PMC, le verre se trie par couleur, la frigolite n'est pas du plastique d'emballage.
+ * va au sac PMC, le verre se trie par couleur, la frigolite en billes va au Recyparc alors que
+ * la barquette en polystyrène lisse va au PMC.
  *
  * Toutes les réponses viennent du guide de tri de l'application (constants/guide.ts, repris de
  * la version en ligne). TEXTES ET RÈGLES PROVISOIRES : à valider avec Monsieur et à recouper avec
@@ -54,14 +55,26 @@ export const MATIERES: Matiere[] = [
         detail: 'sachet, film, bouteille, pot, barquette',
         resultat: { categorie: 'pmc', elements: ['Emballage en plastique'], explication: 'Tous les emballages en plastique vont dans le sac PMC.' },
       },
+      // DEUX « frigolites » différentes (source : trionsmieux.be « Polystyrène expansé » et
+      // « Barquette en polystyrène ») : on les sépare car beaucoup de gens les confondent.
       {
-        id: 'frigolite',
-        libelle: 'De la frigolite',
-        detail: 'polystyrène blanc, calage',
+        id: 'frigolite-billes',
+        libelle: 'Frigolite en billes',
+        detail: 'calage d’appareil : si on la déchire, des petites boules se détachent',
         resultat: {
-          categorie: 'residual',
-          elements: ['Frigolite'],
-          explication: 'La frigolite ne va pas au sac PMC. Elle va aux déchets résiduels.',
+          categorie: 'danger', // « danger » = bac Recyparc dans tri.js
+          elements: ['Frigolite (polystyrène expansé)'],
+          explication: 'La frigolite en billes (calage de TV, lave-linge…) est un flux à part : elle va au Recyparc, jamais au sac PMC. Propre et sans trace d’aliments.',
+        },
+      },
+      {
+        id: 'barquette-polystyrene',
+        libelle: 'Barquette ou mousse rigide',
+        detail: 'barquette de viande ou de poisson, lisse, sans billes',
+        resultat: {
+          categorie: 'pmc',
+          elements: ['Barquette en polystyrène'],
+          explication: 'Les barquettes en polystyrène lisse (viande, poisson) et les emballages en mousse rigide vont dans le sac PMC. À ne pas confondre avec la frigolite en billes, qui va au Recyparc.',
         },
       },
       {

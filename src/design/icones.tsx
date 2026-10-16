@@ -38,6 +38,9 @@ const EQUIVALENTS: Record<string, string> = {};
 // Icônes qui n'existent que dans MaterialCommunityIcons (nom du site -> nom MDI).
 const COMMUNAUTE: Record<string, string> = {
   package_2: 'package-variant-closed',
+  // Lampe torche (le symbole « flash_on » évoquait le flash d'un appareil photo).
+  lampe_torche: 'flashlight',
+  lampe_torche_off: 'flashlight-off',
 };
 
 const CONTOURS: Record<string, string> = {

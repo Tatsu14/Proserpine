@@ -1,12 +1,9 @@
 /**
- * SCANNER — reproduit `pages/scan.html` + `js/pages/scan.js` de la version en ligne,
- * tel qu'il s'affiche RÉELLEMENT (mesuré sur un téléphone, pas déduit du CSS) :
- *   - caméra plein écran ;
- *   - carré de visée de 300 px, centré, entouré d'une zone ombrée à 48 % ;
- *   - quatre coins blancs (traits de 5 px, bras de 40 px) posés juste hors du carré ;
- *   - pas de laser, pas de halo : ils existent dans l'ancien CSS mais plus dans la page ;
- *   - le texte d'aide au centre de l'écran ;
- *   - bouton retour en haut à gauche.
+ * SCANNER — design « D » choisi par Monsieur (provisoire, à retravailler) :
+ *   - caméra plein écran, TOUT l'écran est une zone de scan (plus de zone sombre) ;
+ *   - quatre petits coins blancs translucides au centre : un simple repère, pas une limite ;
+ *   - texte d'aide dans une pastille en bas de l'écran ;
+ *   - bouton retour en haut à gauche, bouton lampe torche en haut à droite.
  * Mêmes fenêtres d'autorisation de la caméra qu'en ligne, mêmes messages, même suite
  * après un scan.
  */
@@ -29,10 +26,10 @@ const CLE_PERMISSION = 'camera_permission';
 const TEXTE_ATTENTE = 'Pointez la caméra vers un code-barre';
 
 // Mesures relevées sur la version en ligne (en pixels CSS).
-const COTE_VISEE = 300; // carré de visée
-const EPAISSEUR_COIN = 5; // épaisseur des coins blancs
-const BRAS_COIN = 40; // longueur des bras des coins
-const OMBRE = 'rgba(0, 0, 0, 0.48)'; // zone ombrée autour du carré
+const LARGEUR_REPERE = 340; // rectangle de repère (la forme d'un code-barres, plus large que haut)
+const HAUTEUR_REPERE = 140;
+const EPAISSEUR_COIN = 4; // épaisseur des coins du repère
+const BRAS_COIN = 28; // longueur des bras des coins
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -160,11 +157,12 @@ export default function ScanScreen() {
     }
   };
 
-  // --- Position du carré de visée : 300 px, centré (réduit si l'écran est plus étroit) ---
+  // --- Position du repère (maquette D) : rectangle large, centré horizontalement, un peu au-dessus
+  //     du milieu de l'écran. Ce n'est qu'un repère : le code-barres est lu PARTOUT dans l'image. ---
   const surZone = (e: LayoutChangeEvent) => setZone({ largeur: e.nativeEvent.layout.width, hauteur: e.nativeEvent.layout.height });
-  const cote = Math.min(COTE_VISEE, Math.max(0, zone.largeur - 24));
-  const gauche = (zone.largeur - cote) / 2;
-  const haut = (zone.hauteur - cote) / 2;
+  const largeurRepere = Math.min(LARGEUR_REPERE, Math.max(0, zone.largeur - 48));
+  const gauche = (zone.largeur - largeurRepere) / 2;
+  const haut = zone.hauteur * 0.45 - HAUTEUR_REPERE / 2;
   const prete = zone.largeur > 0 && zone.hauteur > 0;
   const e = EPAISSEUR_COIN;
   const b = BRAS_COIN;
@@ -185,35 +183,30 @@ export default function ScanScreen() {
       ) : null}
 
       {prete ? (
-        <>
-          {/* Zone ombrée autour du carré (#qr-shaded-region) */}
-          <View pointerEvents="none" style={[styles.ombre, { top: 0, left: 0, right: 0, height: haut }]} />
-          <View pointerEvents="none" style={[styles.ombre, { top: haut + cote, left: 0, right: 0, bottom: 0 }]} />
-          <View pointerEvents="none" style={[styles.ombre, { top: haut, left: 0, width: gauche, height: cote }]} />
-          <View pointerEvents="none" style={[styles.ombre, { top: haut, left: gauche + cote, right: 0, height: cote }]} />
-
-          {/* Quatre coins blancs : le « L » est posé juste hors du carré */}
+        // Maquette D : plus de zone sombre, tout l'écran est une zone de scan. Seuls quatre petits
+        // coins translucides, posés sur le rectangle, indiquent où viser (simple repère).
+        <View pointerEvents="none" style={styles.repere}>
           {/* haut-gauche */}
-          <View pointerEvents="none" style={[styles.coin, { left: gauche, top: haut - e, width: b, height: e }]} />
-          <View pointerEvents="none" style={[styles.coin, { left: gauche - e, top: haut - e, width: e, height: b + e }]} />
+          <View style={[styles.coin, { left: gauche, top: haut, width: b, height: e }]} />
+          <View style={[styles.coin, { left: gauche, top: haut, width: e, height: b }]} />
           {/* haut-droite */}
-          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote - b, top: haut - e, width: b, height: e }]} />
-          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote, top: haut - e, width: e, height: b + e }]} />
+          <View style={[styles.coin, { left: gauche + largeurRepere - b, top: haut, width: b, height: e }]} />
+          <View style={[styles.coin, { left: gauche + largeurRepere - e, top: haut, width: e, height: b }]} />
           {/* bas-gauche */}
-          <View pointerEvents="none" style={[styles.coin, { left: gauche, top: haut + cote, width: b, height: e }]} />
-          <View pointerEvents="none" style={[styles.coin, { left: gauche - e, top: haut + cote - b, width: e, height: b + e }]} />
+          <View style={[styles.coin, { left: gauche, top: haut + HAUTEUR_REPERE - e, width: b, height: e }]} />
+          <View style={[styles.coin, { left: gauche, top: haut + HAUTEUR_REPERE - b, width: e, height: b }]} />
           {/* bas-droite */}
-          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote - b, top: haut + cote, width: b, height: e }]} />
-          <View pointerEvents="none" style={[styles.coin, { left: gauche + cote, top: haut + cote - b, width: e, height: b + e }]} />
-        </>
-      ) : null}
-
-      {/* Texte d'aide : SOUS le cadre de visée (au centre il masquerait la zone où l'on place le code-barres) */}
-      {prete ? (
-        <View pointerEvents="none" style={[styles.couche, { top: haut + cote + 24 }]}>
-          <Text style={styles.texte}>{texte}</Text>
+          <View style={[styles.coin, { left: gauche + largeurRepere - b, top: haut + HAUTEUR_REPERE - e, width: b, height: e }]} />
+          <View style={[styles.coin, { left: gauche + largeurRepere - e, top: haut + HAUTEUR_REPERE - b, width: e, height: b }]} />
         </View>
       ) : null}
+
+      {/* Texte d'aide : pastille en bas de l'écran (il ne masque ainsi rien de l'image) */}
+      <View pointerEvents="none" style={[styles.couche, { bottom: 40 + marges.bottom }]}>
+        <View style={styles.pastille}>
+          <Text style={styles.texte}>{texte}</Text>
+        </View>
+      </View>
 
       {/* Lampe de poche : utile dans un magasin sombre */}
       <Pressable
@@ -223,7 +216,7 @@ export default function ScanScreen() {
         onPress={() => setLampe((l) => !l)}
         style={[styles.retour, styles.lampe, { top: 16 + marges.top }, lampe && { backgroundColor: couleurs.marque }]}
       >
-        <Icone nom={lampe ? 'flash_on' : 'flash_off'} taille={24} couleur={lampe ? couleurs.marqueSombre : '#FFFFFF'} />
+        <Icone nom={lampe ? 'lampe_torche' : 'lampe_torche_off'} taille={24} couleur={lampe ? couleurs.marqueSombre : '#FFFFFF'} />
       </Pressable>
 
       {/* .back-btn */}
@@ -241,19 +234,18 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
-  ombre: { position: 'absolute', backgroundColor: OMBRE },
+  // Calque du repère : les coins sont à moitié transparents pour rester discrets.
+  repere: { ...StyleSheet.absoluteFill, opacity: 0.55 },
   coin: { position: 'absolute', backgroundColor: '#FFFFFF', zIndex: 5 },
-  // .scan-ui-layer : texte centré sur tout l'écran
-  couche: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10 },
+  // Couche du texte d'aide, centrée en bas
+  couche: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 16 },
+  pastille: { backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999 },
   // .scan-text
   texte: {
     fontFamily: police.semiGras,
     fontSize: tailleTexte.md,
     color: '#FFFFFF',
     textAlign: 'center',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
   },
   lampe: { left: undefined, right: 16 },
   // .back-btn

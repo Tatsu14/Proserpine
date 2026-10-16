@@ -27,7 +27,7 @@ const CONSEILS_TRI = [
   'Les boîtes de pizza grasses ne vont PAS dans les papiers/cartons — poubelle résiduelle.',
   'Réduire prime sur recycler : préférez les produits avec moins d\'emballage.',
   'Les canettes en aluminium sont infiniment recyclables sans perte de qualité.',
-  'Le polystyrène expansé (frigolite) ne se recycle pas — poubelle résiduelle.',
+  'Deux frigolites, deux bacs : la frigolite en billes (calage d\'appareils) va au Recyparc, la barquette de viande lisse va dans le sac PMC.',
   'Séparez toujours les composants d\'un emballage avant de le trier.',
   'Un verre brisé ne va pas dans la bulle à verre — emballez-le dans du papier et mettez-le aux résiduels.',
   'Les briques de lait et de jus (Tetra Pak) vont dans le sac bleu PMC.',
