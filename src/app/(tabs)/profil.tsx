@@ -134,6 +134,12 @@ export default function ProfilScreen() {
         <LigneMenu icone="tune" libelle="Paramètres" onPress={() => router.push('/parametres')} />
       </View>
 
+      <Text style={styles.sectionTitre}>Aide & avis</Text>
+      <View style={styles.liste}>
+        <LigneMenu icone="rate_review" libelle="Donner mon avis" onPress={() => router.push('/avis')} />
+        <LigneMenu icone="report_problem" libelle="Signaler un problème" onPress={() => router.push('/signalement')} />
+      </View>
+
       {invite ? (
         <>
           <Text style={styles.sectionTitre}>Application</Text>

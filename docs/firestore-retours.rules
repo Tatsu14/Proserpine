@@ -1,0 +1,61 @@
+// Règles Firestore des retours utilisateurs (avis et signalements).
+//
+// ⚠ Ce fichier est un EXTRAIT : à FUSIONNER avec vos règles actuelles dans la console Firebase
+// (Firestore > Règles), à l'intérieur du bloc `match /databases/{database}/documents { ... }`.
+// Coller des règles complètes à la place des anciennes effacerait celles de `utilisateurs`.
+//
+// Avant de publier : remplacer REMPLACER_PAR_L_UID_ADMIN par l'identifiant (UID) du compte
+// administrateur (console Firebase > Authentication > Utilisateurs > colonne « UID »).
+// Puis tester dans l'onglet « Simulateur de règles » avant de publier.
+
+function estAdmin() {
+  return request.auth != null && request.auth.uid == 'REMPLACER_PAR_L_UID_ADMIN';
+}
+
+function texteOuNul(valeur) {
+  return valeur == null || valeur is string;
+}
+
+function infosTechniquesValides(donnees) {
+  return donnees.versionApp is string && donnees.versionApp.size() <= 30
+    && donnees.plateforme in ['ios', 'android', 'web']
+    && texteOuNul(donnees.versionSysteme)
+    && texteOuNul(donnees.modeleAppareil)
+    && donnees.creeLe == request.time;
+}
+
+match /retours_avis/{id} {
+  // Création : utilisateur connecté, champs exacts, valeurs bornées. Aucun identifiant stocké.
+  allow create: if request.auth != null
+    && request.resource.data.keys().hasOnly(['fonctionnalite', 'type', 'note', 'commentaire',
+         'versionApp', 'plateforme', 'versionSysteme', 'modeleAppareil', 'creeLe'])
+    && request.resource.data.keys().hasAll(['fonctionnalite', 'type', 'note', 'commentaire',
+         'versionApp', 'plateforme', 'versionSysteme', 'modeleAppareil', 'creeLe'])
+    && request.resource.data.fonctionnalite in ['scan', 'recherche', 'guide', 'indice', 'profil', 'autre']
+    && request.resource.data.type in ['idee', 'difficulte', 'design', 'eloge']
+    && request.resource.data.note is int
+    && request.resource.data.note >= 1 && request.resource.data.note <= 5
+    && request.resource.data.commentaire is string
+    && request.resource.data.commentaire.size() <= 500
+    && infosTechniquesValides(request.resource.data);
+  allow read: if estAdmin();
+  allow update, delete: if false;
+}
+
+match /retours_signalements/{id} {
+  allow create: if request.auth != null
+    && request.resource.data.keys().hasOnly(['fonctionnalite', 'gravite', 'action', 'description',
+         'versionApp', 'plateforme', 'versionSysteme', 'modeleAppareil', 'creeLe'])
+    && request.resource.data.keys().hasAll(['fonctionnalite', 'gravite', 'action', 'description',
+         'versionApp', 'plateforme', 'versionSysteme', 'modeleAppareil', 'creeLe'])
+    && request.resource.data.fonctionnalite in ['scan', 'recherche', 'guide', 'indice', 'profil', 'autre']
+    && request.resource.data.gravite in ['genant', 'bloquant']
+    && request.resource.data.action is string
+    && request.resource.data.action.size() <= 200
+    && request.resource.data.description is string
+    && request.resource.data.description.size() >= 10
+    && request.resource.data.description.size() <= 1000
+    && infosTechniquesValides(request.resource.data);
+  allow read: if estAdmin();
+  allow update, delete: if false;
+}

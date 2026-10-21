@@ -97,3 +97,33 @@ distribue certains fichiers en `.cjs` que le bundler doit savoir lire.
 - Test sur appareil (Expo Go), puis onboarding, paramètres, admin.
 - Build EAS + icône/captures + politique de confidentialité (RGPD).
 - Banc de tests Jest pour la logique portée (`tri`, `ecoscore`, `api`).
+
+## Étape 7 — Retours des utilisateurs (avis et signalements)
+
+**Ce qui a été ajouté et pourquoi**
+
+- **Deux formulaires**, accessibles depuis une nouvelle section « Aide & avis » du Profil :
+  `src/app/avis.tsx` (feedback ciblé) et `src/app/signalement.tsx` (problème).
+- **Feedback ciblé** : on ne demande pas seulement « un commentaire », mais *sur quoi* (scan,
+  recherche, guide de tri, indice d'impact, profil, autre), *quel type* (idée, difficulté,
+  design, éloge) et une *note* de 1 à 5. Ce découpage permet ensuite de trier et de compter les
+  retours (« combien de difficultés sur le scan ? ») au lieu de relire un tas de messages.
+- **Un service dédié** (`src/services/retours.ts`) : il vérifie la saisie puis écrit dans Firestore.
+  Comme `compte.ts`, il ne « throw » jamais vers l'écran : il renvoie `{ success, error }`.
+- **Aucune donnée personnelle** : ni identifiant, ni pseudo, ni e-mail ne sont enregistrés.
+  On joint seulement des informations techniques (version de l'app, plateforme, version du
+  système, modèle de l'appareil) pour pouvoir reproduire un bug. Conséquence : la suppression de
+  compte n'a rien à effacer côté retours. À mentionner dans la politique de confidentialité.
+- **Règles de sécurité** (`docs/firestore-retours.rules`) : Firestore est ouvert à tout client
+  muni de la clé publique ; ce sont les règles qui protègent. Elles disent : écriture seulement
+  si connecté, avec les champs attendus et des limites de longueur ; lecture réservée au compte
+  administrateur ; ni modification ni suppression. ⚠ À FUSIONNER avec les règles existantes
+  dans la console Firebase, après avoir remplacé l'UID administrateur, et à tester dans le
+  simulateur de règles.
+- Petit ajout au composant `Champ` : l'option `multiligne` (zone de texte).
+
+**Vérifications** : `tsc --noEmit` → 0 erreur. Le lint n'est pas encore configuré dans le projet.
+Rendu et envoi réel **à tester sur appareil**, une fois les règles Firestore publiées.
+
+**Prochaines étapes** : tableau de bord administrateur (liste filtrable, statuts, graphiques),
+puis sa version web protégée.

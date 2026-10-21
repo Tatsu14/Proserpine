@@ -23,9 +23,12 @@ type Props = Pick<
   invalide?: boolean;
   /** Appelé quand l'utilisateur quitte le champ (la validation s'y déclenche, comme en ligne). */
   onBlur?: () => void;
+  /** Zone de texte sur plusieurs lignes (commentaire, description). */
+  multiligne?: boolean;
+  placeholder?: string;
 };
 
-export function Champ({ etiquette, erreur, invalide, onBlur, ...saisie }: Props) {
+export function Champ({ etiquette, erreur, invalide, onBlur, multiligne, ...saisie }: Props) {
   const [focus, setFocus] = useState(false);
   return (
     <View style={styles.groupe}>
@@ -38,8 +41,11 @@ export function Champ({ etiquette, erreur, invalide, onBlur, ...saisie }: Props)
           setFocus(false);
           onBlur?.();
         }}
+        multiline={multiligne}
+        textAlignVertical={multiligne ? 'top' : undefined}
         style={[
           styles.champ,
+          multiligne && styles.champMultiligne,
           focus && styles.champFocus,
           invalide && styles.champInvalide,
         ]}
@@ -70,6 +76,7 @@ const styles = StyleSheet.create({
     // Le contour du navigateur est remplacé par notre halo vert.
     outlineStyle: 'none',
   } as any,
+  champMultiligne: { minHeight: 112 },
   champFocus: {
     backgroundColor: couleurs.fondCarte,
     borderColor: couleurs.marque,
