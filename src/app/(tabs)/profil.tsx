@@ -13,6 +13,7 @@ import { Text } from '@/components/ui/texte';
 
 import { EnteteBoutonDanger, EnteteSombre } from '@/components/ui/entete-sombre';
 import { useUi } from '@/components/ui/ui-provider';
+import { UID_ADMIN } from '@/constants/admin';
 import { useAuth } from '@/contexts/auth';
 import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
@@ -139,6 +140,15 @@ export default function ProfilScreen() {
         <LigneMenu icone="rate_review" libelle="Donner mon avis" onPress={() => router.push('/avis')} />
         <LigneMenu icone="report_problem" libelle="Signaler un problème" onPress={() => router.push('/signalement')} />
       </View>
+
+      {user?.uid === UID_ADMIN ? (
+        <>
+          <Text style={styles.sectionTitre}>Administration</Text>
+          <View style={styles.liste}>
+            <LigneMenu icone="admin_panel_settings" libelle="Retours des utilisateurs" onPress={() => router.push('/admin')} />
+          </View>
+        </>
+      ) : null}
 
       {invite ? (
         <>

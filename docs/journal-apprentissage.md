@@ -127,3 +127,31 @@ Rendu et envoi réel **à tester sur appareil**, une fois les règles Firestore 
 
 **Prochaines étapes** : tableau de bord administrateur (liste filtrable, statuts, graphiques),
 puis sa version web protégée.
+
+## Étape 8 — Tableau de bord administrateur et export des retours
+
+**Ce qui a été ajouté et pourquoi**
+
+- **Écran `src/app/admin.tsx`**, accessible depuis le Profil dans une section « Administration »
+  visible **uniquement pour le compte administrateur**. Il affiche des compteurs (nombre d'avis,
+  note moyenne, retours nouveaux, bloquants ouverts), deux onglets (avis / signalements), des
+  filtres par fonctionnalité et par statut, et des cartes de retours.
+- **Statuts** : Nouveau → En cours → Traité. En touchant le statut d'une carte, on passe au
+  suivant (le changement s'affiche tout de suite et est annulé si l'enregistrement échoue). Un
+  retour sans statut compte comme « Nouveau » : les anciens retours n'ont pas besoin de migration.
+- **Export pour analyse** (`src/services/export-retours.ts`) : un bouton fabrique **un rapport
+  texte** — une demande d'analyse, des chiffres clés, puis chaque retour sur une ligne — à coller
+  dans une conversation Claude Code. Sur le web, le rapport est copié dans le presse-papiers ; sur
+  téléphone, le menu de partage du système s'ouvre. « Exporter les nouveaux » évite de réanalyser
+  ce qui a déjà été traité.
+- **Constante `UID_ADMIN`** (`src/constants/admin.ts`) : elle sert seulement à afficher ou masquer
+  l'entrée du Profil. Ce n'est PAS la sécurité : celle-ci est dans les règles Firestore, qui
+  refusent la lecture à tout autre compte.
+- **Règles Firestore** : l'administrateur peut maintenant modifier un retour, mais uniquement son
+  champ `statut` et avec trois valeurs possibles. ⚠ À republier dans la console Firebase.
+
+**Vérifications** : `tsc --noEmit` → 0 erreur ; bundle de production Android construit. Rendu,
+export et règles à tester sur appareil.
+
+**Prochaines étapes** : graphiques (répartition par fonctionnalité, évolution de la note), puis
+version web protégée pour consulter depuis un ordinateur.

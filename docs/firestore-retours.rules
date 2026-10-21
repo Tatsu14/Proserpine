@@ -45,7 +45,11 @@ service cloud.firestore {
         && request.resource.data.commentaire.size() <= 500
         && infosTechniquesValides(request.resource.data);
       allow read: if estAdmin();
-      allow update, delete: if false;
+      // L'administrateur peut modifier UNIQUEMENT le statut (Nouveau / En cours / Traité).
+      allow update: if estAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statut'])
+        && request.resource.data.statut in ['nouveau', 'en_cours', 'traite'];
+      allow delete: if false;
     }
 
     match /retours_signalements/{id} {
@@ -63,7 +67,11 @@ service cloud.firestore {
         && request.resource.data.description.size() <= 1000
         && infosTechniquesValides(request.resource.data);
       allow read: if estAdmin();
-      allow update, delete: if false;
+      // L'administrateur peut modifier UNIQUEMENT le statut (Nouveau / En cours / Traité).
+      allow update: if estAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statut'])
+        && request.resource.data.statut in ['nouveau', 'en_cours', 'traite'];
+      allow delete: if false;
     }
   }
 }
