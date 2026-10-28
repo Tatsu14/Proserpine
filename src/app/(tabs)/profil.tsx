@@ -6,6 +6,7 @@
  * « Modifier mes informations » et « Paramètres » ouvrent leurs vraies pages (reprises de ProserpineV2).
  */
 import { setStatusBarStyle } from 'expo-status-bar';
+import * as WebBrowser from 'expo-web-browser';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -13,6 +14,8 @@ import { Text } from '@/components/ui/texte';
 
 import { EnteteBoutonDanger, EnteteSombre } from '@/components/ui/entete-sombre';
 import { useUi } from '@/components/ui/ui-provider';
+import { ADMIN_VISIBLE, UID_ADMIN } from '@/constants/admin';
+import { LIEN_FORMULAIRE_AVIS, LIEN_FORMULAIRE_SIGNALEMENT } from '@/constants/liens';
 import { useAuth } from '@/contexts/auth';
 import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
@@ -95,6 +98,19 @@ export default function ProfilScreen() {
     }, [user]),
   );
 
+  /** Ouvre un Google Form dans le navigateur intégré (ou un onglet sur le web). */
+  const ouvrirFormulaire = async (lien: string) => {
+    if (!lien) {
+      ui.toast('Ce formulaire sera bientôt disponible.', 'error');
+      return;
+    }
+    try {
+      await WebBrowser.openBrowserAsync(lien);
+    } catch {
+      ui.toast("Impossible d'ouvrir le formulaire.", 'error');
+    }
+  };
+
   const deconnecter = () =>
     ui.confirmer({
       titre: 'Déconnexion',
@@ -133,6 +149,25 @@ export default function ProfilScreen() {
         <LigneMenu icone="edit_document" libelle="Modifier mes informations" onPress={() => router.push('/modifier-informations')} />
         <LigneMenu icone="tune" libelle="Paramètres" onPress={() => router.push('/parametres')} />
       </View>
+
+      <Text style={styles.sectionTitre}>Aide & avis</Text>
+      <View style={styles.liste}>
+        <LigneMenu icone="rate_review" libelle="Donner mon avis" onPress={() => ouvrirFormulaire(LIEN_FORMULAIRE_AVIS)} />
+        <LigneMenu
+          icone="report_problem"
+          libelle="Signaler un problème"
+          onPress={() => ouvrirFormulaire(LIEN_FORMULAIRE_SIGNALEMENT)}
+        />
+      </View>
+
+      {ADMIN_VISIBLE && user?.uid === UID_ADMIN ? (
+        <>
+          <Text style={styles.sectionTitre}>Administration</Text>
+          <View style={styles.liste}>
+            <LigneMenu icone="admin_panel_settings" libelle="Retours des utilisateurs" onPress={() => router.push('/admin')} />
+          </View>
+        </>
+      ) : null}
 
       {invite ? (
         <>
