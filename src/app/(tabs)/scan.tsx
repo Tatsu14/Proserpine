@@ -1,7 +1,7 @@
 /**
  * SCANNER — design « D » choisi par Monsieur (provisoire, à retravailler) :
  *   - caméra plein écran, TOUT l'écran est une zone de scan (plus de zone sombre) ;
- *   - quatre petits coins blancs translucides au centre : un simple repère, pas une limite ;
+ *   - aucun cadre ni repère : l'image est lue partout ;
  *   - texte d'aide dans une pastille en bas de l'écran ;
  *   - bouton retour en haut à gauche, bouton lampe torche en haut à droite.
  * Mêmes fenêtres d'autorisation de la caméra qu'en ligne, mêmes messages, même suite
@@ -12,7 +12,7 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import { Stack, useIsFocused, useRouter } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Vibration, View, type LayoutChangeEvent } from 'react-native';
+import { Pressable, StyleSheet, Vibration, View } from 'react-native';
 import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,12 +25,6 @@ import { ecrireProduitCache } from '@/services/cache';
 const CLE_PERMISSION = 'camera_permission';
 const TEXTE_ATTENTE = 'Pointez la caméra vers un code-barre';
 
-// Mesures relevées sur la version en ligne (en pixels CSS).
-const LARGEUR_REPERE = 340; // rectangle de repère (la forme d'un code-barres, plus large que haut)
-const HAUTEUR_REPERE = 140;
-const EPAISSEUR_COIN = 4; // épaisseur des coins du repère
-const BRAS_COIN = 28; // longueur des bras des coins
-
 export default function ScanScreen() {
   const router = useRouter();
   const ui = useUi();
@@ -41,7 +35,6 @@ export default function ScanScreen() {
   const [camera, setCamera] = useState(false); // la caméra tourne-t-elle ?
   const [texte, setTexte] = useState(TEXTE_ATTENTE);
   const [lampe, setLampe] = useState(false); // lampe de poche allumée ?
-  const [zone, setZone] = useState({ largeur: 0, hauteur: 0 }); // taille de l'écran
   const enTraitement = useRef(false);
 
   // Fond noir : icônes de la barre d'état en clair tant que le scanner est affiché.
@@ -157,18 +150,8 @@ export default function ScanScreen() {
     }
   };
 
-  // --- Position du repère (maquette D) : rectangle large, centré horizontalement, un peu au-dessus
-  //     du milieu de l'écran. Ce n'est qu'un repère : le code-barres est lu PARTOUT dans l'image. ---
-  const surZone = (e: LayoutChangeEvent) => setZone({ largeur: e.nativeEvent.layout.width, hauteur: e.nativeEvent.layout.height });
-  const largeurRepere = Math.min(LARGEUR_REPERE, Math.max(0, zone.largeur - 48));
-  const gauche = (zone.largeur - largeurRepere) / 2;
-  const haut = zone.hauteur * 0.45 - HAUTEUR_REPERE / 2;
-  const prete = zone.largeur > 0 && zone.hauteur > 0;
-  const e = EPAISSEUR_COIN;
-  const b = BRAS_COIN;
-
   return (
-    <View style={styles.page} onLayout={surZone}>
+    <View style={styles.page}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* #reader : la caméra */}
@@ -180,25 +163,6 @@ export default function ScanScreen() {
           barcodeScannerSettings={{ barcodeTypes: ['ean13', 'ean8'] }}
           onBarcodeScanned={surCodeLu}
         />
-      ) : null}
-
-      {prete ? (
-        // Maquette D : plus de zone sombre, tout l'écran est une zone de scan. Seuls quatre petits
-        // coins translucides, posés sur le rectangle, indiquent où viser (simple repère).
-        <View pointerEvents="none" style={styles.repere}>
-          {/* haut-gauche */}
-          <View style={[styles.coin, { left: gauche, top: haut, width: b, height: e }]} />
-          <View style={[styles.coin, { left: gauche, top: haut, width: e, height: b }]} />
-          {/* haut-droite */}
-          <View style={[styles.coin, { left: gauche + largeurRepere - b, top: haut, width: b, height: e }]} />
-          <View style={[styles.coin, { left: gauche + largeurRepere - e, top: haut, width: e, height: b }]} />
-          {/* bas-gauche */}
-          <View style={[styles.coin, { left: gauche, top: haut + HAUTEUR_REPERE - e, width: b, height: e }]} />
-          <View style={[styles.coin, { left: gauche, top: haut + HAUTEUR_REPERE - b, width: e, height: b }]} />
-          {/* bas-droite */}
-          <View style={[styles.coin, { left: gauche + largeurRepere - b, top: haut + HAUTEUR_REPERE - e, width: b, height: e }]} />
-          <View style={[styles.coin, { left: gauche + largeurRepere - e, top: haut + HAUTEUR_REPERE - b, width: e, height: b }]} />
-        </View>
       ) : null}
 
       {/* Texte d'aide : pastille en bas de l'écran (il ne masque ainsi rien de l'image) */}
@@ -234,9 +198,6 @@ export default function ScanScreen() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
-  // Calque du repère : les coins sont à moitié transparents pour rester discrets.
-  repere: { ...StyleSheet.absoluteFill, opacity: 0.55 },
-  coin: { position: 'absolute', backgroundColor: '#FFFFFF', zIndex: 5 },
   // Couche du texte d'aide, centrée en bas
   couche: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 16 },
   pastille: { backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999 },
