@@ -15,7 +15,7 @@ import { Text } from '@/components/ui/texte';
 import { EnteteBoutonDanger, EnteteSombre } from '@/components/ui/entete-sombre';
 import { useUi } from '@/components/ui/ui-provider';
 import { ADMIN_VISIBLE, UID_ADMIN } from '@/constants/admin';
-import { LIEN_FORMULAIRE_AVIS, LIEN_FORMULAIRE_SIGNALEMENT } from '@/constants/liens';
+import { LIEN_FORMULAIRE_AVIS, LIEN_FORMULAIRE_SIGNALEMENT, LIEN_POLITIQUE_CONFIDENTIALITE } from '@/constants/liens';
 import { useAuth } from '@/contexts/auth';
 import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
@@ -98,16 +98,16 @@ export default function ProfilScreen() {
     }, [user]),
   );
 
-  /** Ouvre un Google Form dans le navigateur intégré (ou un onglet sur le web). */
-  const ouvrirFormulaire = async (lien: string) => {
+  /** Ouvre un lien externe (Google Form, politique de confidentialité) dans le navigateur intégré (ou un onglet sur le web). */
+  const ouvrirLien = async (lien: string) => {
     if (!lien) {
-      ui.toast('Ce formulaire sera bientôt disponible.', 'error');
+      ui.toast('Ce lien sera bientôt disponible.', 'error');
       return;
     }
     try {
       await WebBrowser.openBrowserAsync(lien);
     } catch {
-      ui.toast("Impossible d'ouvrir le formulaire.", 'error');
+      ui.toast("Impossible d'ouvrir le lien.", 'error');
     }
   };
 
@@ -152,11 +152,16 @@ export default function ProfilScreen() {
 
       <Text style={styles.sectionTitre}>Aide & avis</Text>
       <View style={styles.liste}>
-        <LigneMenu icone="rate_review" libelle="Donner mon avis" onPress={() => ouvrirFormulaire(LIEN_FORMULAIRE_AVIS)} />
+        <LigneMenu icone="rate_review" libelle="Donner mon avis" onPress={() => ouvrirLien(LIEN_FORMULAIRE_AVIS)} />
         <LigneMenu
           icone="report_problem"
           libelle="Signaler un problème"
-          onPress={() => ouvrirFormulaire(LIEN_FORMULAIRE_SIGNALEMENT)}
+          onPress={() => ouvrirLien(LIEN_FORMULAIRE_SIGNALEMENT)}
+        />
+        <LigneMenu
+          icone="privacy_tip"
+          libelle="Politique de confidentialité"
+          onPress={() => ouvrirLien(LIEN_POLITIQUE_CONFIDENTIALITE)}
         />
       </View>
 
