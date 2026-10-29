@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Politique de confidentialité – Proserpine</title>
+<meta name="robots" content="index,follow">
+<style>
+  :root { --fond:#ffffff; --texte:#1c2a22; --attenue:#4a5a50; --marque:#00cc66; --sombre:#071e12; --ligne:#dfe7e2; --carte:#f4f8f5; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fond:#0b1a12; --texte:#e8f1ec; --attenue:#a9bbb1; --ligne:#24382d; --carte:#12261b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.65 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+  header { background:var(--sombre); color:#fff; padding:28px 16px; }
+  header div, main { max-width:760px; margin:0 auto; }
+  header p { margin:0 0 4px; color:var(--marque); font-weight:700; letter-spacing:.04em; }
+  h1 { margin:0; font-size:1.7rem; line-height:1.25; }
+  main { padding:24px 16px 56px; }
+  h2 { margin:2rem 0 .5rem; font-size:1.2rem; }
+  p, li { margin:.5rem 0; }
+  ul { padding-left:1.25rem; }
+  a { color:#008a45; }
+  @media (prefers-color-scheme: dark) { a { color:var(--marque); } }
+  .maj { color:var(--attenue); font-size:.92rem; }
+  .tableau { overflow-x:auto; border:1px solid var(--ligne); border-radius:10px; }
+  table { border-collapse:collapse; width:100%; min-width:520px; font-size:.95rem; }
+  th, td { text-align:left; vertical-align:top; padding:10px 12px; border-bottom:1px solid var(--ligne); }
+  th { background:var(--carte); }
+  tr:last-child td { border-bottom:0; }
+</style>
+</head>
+<body>
+<header><div>
+  <p>PROSERPINE</p>
+  <h1>Politique de confidentialité</h1>
+</div></header>
+<main>
+<p class="maj">Dernière mise à jour : 29 octobre 2026</p>
+
+<p>Proserpine indique, à partir du code-barres d'un produit, dans quel bac trier chaque élément de l'emballage (Province de Liège, Belgique) et estime l'impact environnemental du produit. Cette page explique quelles données personnelles l'application utilise, pourquoi, et quels sont vos droits.</p>
+
+<h2>1. Qui est responsable de vos données</h2>
+<p>Maxime Cavallari, qui édite Proserpine à titre personnel, en Belgique.<br>
+Contact : <a href="mailto:maximecav4@gmail.com">maximecav4@gmail.com</a></p>
+
+<h2>2. Les données que nous utilisons</h2>
+<div class="tableau"><table>
+<thead><tr><th>Donnée</th><th>Quand</th><th>Où elle est conservée</th></tr></thead>
+<tbody>
+<tr><td>Adresse e-mail, nom d'utilisateur</td><td>À la création du compte</td><td>Firebase Authentication et Firestore (Google)</td></tr>
+<tr><td>Mot de passe</td><td>À la création du compte</td><td>Firebase Authentication. Nous ne le voyons jamais en clair.</td></tr>
+<tr><td>Date de création du compte</td><td>À la création du compte</td><td>Firestore</td></tr>
+<tr><td>Historique des produits consultés : code-barres, nom, marque, date du dernier scan, nombre de scans, indice d'impact</td><td>À chaque ouverture d'une fiche produit, si vous êtes connecté</td><td>Firestore</td></tr>
+<tr><td>Indicateur « présentation d'accueil déjà vue »</td><td>Après la présentation de bienvenue</td><td>Firestore</td></tr>
+<tr><td>Réglages (taille du texte, affichage de l'indice), session de connexion, produits déjà consultés (cache), réponse à la demande d'accès à la caméra</td><td>Au fil de l'utilisation</td><td>Uniquement sur votre appareil</td></tr>
+</tbody></table></div>
+<p>Nous ne collectons ni votre localisation, ni vos contacts, ni vos photos, ni votre identifiant publicitaire. L'application ne contient aucune publicité, aucun outil de mesure d'audience et aucun suivi de votre comportement.</p>
+
+<h2>3. Pourquoi nous les utilisons</h2>
+<ul>
+<li>Gérer votre compte et vous permettre de vous connecter.</li>
+<li>Afficher votre historique et vos classements personnels (« produits les plus scannés », « meilleurs scores »).</li>
+<li>Vous envoyer des e-mails de service : confirmation d'adresse et réinitialisation du mot de passe.</li>
+</ul>
+<p>Aucun e-mail commercial n'est envoyé. Nous ne vendons pas vos données et ne les utilisons ni pour de la publicité ni pour du profilage.</p>
+
+<h2>4. La caméra</h2>
+<p>L'accès à la caméra sert uniquement à lire les codes-barres. La lecture se fait sur votre appareil : Proserpine n'enregistre et n'envoie aucune photo ni vidéo.</p>
+
+<h2>5. Les services extérieurs</h2>
+<ul>
+<li><strong>Google (Firebase Authentication et Firestore)</strong> : héberge les comptes et l'historique. Google peut traiter des données hors de l'Union européenne, avec les garanties qu'il met en place (notamment des clauses contractuelles types).</li>
+<li><strong>Connexion avec Google</strong> (version web uniquement) : si vous choisissez ce mode, Google nous communique votre adresse e-mail et votre nom.</li>
+<li><strong>Open Food Facts, Open Beauty Facts et Open Products Facts</strong> : pour retrouver un produit, l'application leur envoie le code-barres scanné ou le texte que vous recherchez. Ces demandes ne contiennent ni votre identifiant ni votre adresse e-mail, mais ces services voient, comme tout site web, l'adresse IP de la connexion.</li>
+<li><strong>Vercel</strong> : héberge la version web de l'application et peut conserver des journaux techniques de connexion (adresse IP, appareil).</li>
+<li><strong>Google Forms</strong> : les boutons « Donner mon avis » et « Signaler un problème » ouvrent un formulaire Google, hors de l'application. N'y écrivez pas d'information personnelle inutile.</li>
+</ul>
+
+<h2>6. Combien de temps</h2>
+<p>Votre compte et votre historique sont conservés tant que vous ne supprimez pas votre compte. Quand vous le supprimez, votre historique, votre profil et votre compte de connexion sont effacés définitivement. Les services extérieurs listés ci-dessus peuvent garder leurs propres journaux techniques, selon leurs règles.</p>
+
+<h2>7. Vos droits</h2>
+<p>Vous pouvez à tout moment, dans l'application (Profil, puis « Modifier mes informations ») :</p>
+<ul>
+<li>modifier votre nom d'utilisateur et votre mot de passe ;</li>
+<li>exporter vos données dans un fichier ;</li>
+<li>supprimer votre compte et vos données (<a href="/suppression-compte">comment faire</a>).</li>
+</ul>
+<p>Pour toute autre demande (accès, rectification, opposition), écrivez à <a href="mailto:maximecav4@gmail.com">maximecav4@gmail.com</a>. Vous pouvez aussi déposer une plainte auprès de l'Autorité de protection des données (Belgique) : <a href="https://www.autoriteprotectiondonnees.be">autoriteprotectiondonnees.be</a>.</p>
+
+<h2>8. Enfants</h2>
+<p>Proserpine n'est pas destinée aux enfants de moins de 13 ans. Si un enfant de moins de 13 ans a créé un compte, écrivez-nous et nous le supprimerons.</p>
+
+<h2>9. Changements</h2>
+<p>Si cette politique change, la date de mise à jour en haut de la page change aussi.</p>
+</main>
+</body>
+</html>
