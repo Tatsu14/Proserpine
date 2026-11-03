@@ -1,7 +1,7 @@
 /**
  * ADMINISTRATION — tableau de bord des retours utilisateurs (réservé au compte administrateur).
  *
- * Compteurs, deux onglets (avis / signalements), filtres par fonctionnalité et par statut,
+ * Compteurs, trois onglets (avis / signalements / consignes fausses), filtres par fonctionnalité et par statut,
  * changement de statut en touchant le statut d'une carte, et export d'un rapport texte à coller
  * dans une conversation Claude Code pour analyser les retours.
  *
@@ -22,17 +22,21 @@ import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import {
   changerStatut,
   chargerAvis,
+  chargerConsignes,
   chargerSignalements,
   LIMITE_CHARGEMENT,
   STATUTS,
   statutSuivant,
   type Avis,
+  type ConsigneSignalee,
   type Signalement,
   type Statut,
 } from '@/services/admin-retours';
 import { construireRapport, noteMoyenne } from '@/services/export-retours';
 import {
+  BACS,
   COLLECTION_AVIS,
+  COLLECTION_CONSIGNES,
   COLLECTION_SIGNALEMENTS,
   FONCTIONNALITES,
   GRAVITES,
@@ -40,19 +44,22 @@ import {
   type Fonctionnalite,
 } from '@/services/retours';
 
-type Onglet = 'avis' | 'signalements';
+type Onglet = 'avis' | 'signalements' | 'consignes';
 type FiltreFonctionnalite = 'toutes' | Fonctionnalite;
 type FiltreStatut = 'tous' | Statut;
 
 const ONGLETS = [
   { id: 'avis', libelle: 'Avis' },
   { id: 'signalements', libelle: 'Signalements' },
+  { id: 'consignes', libelle: 'Consignes' },
 ] as const;
 const FILTRES_FONCTIONNALITE = [{ id: 'toutes', libelle: 'Toutes' }, ...FONCTIONNALITES] as const;
 const FILTRES_STATUT = [{ id: 'tous', libelle: 'Tous' }, ...STATUTS] as const;
 
 const libelle = (liste: readonly { id: string; libelle: string }[], id: string) =>
   liste.find((e) => e.id === id)?.libelle ?? id;
+
+const titresBacs = (ids: string[]) => ids.map((b) => libelle(BACS, b)).join(' + ');
 
 const dateCourte = (d: Date | null) => (d ? d.toLocaleDateString('fr-FR') : '—');
 
@@ -90,17 +97,20 @@ export default function AdminScreen() {
   const [filtreStatut, setFiltreStatut] = useState<FiltreStatut>('tous');
   const [avis, setAvis] = useState<Avis[]>([]);
   const [signalements, setSignalements] = useState<Signalement[]>([]);
+  const [consignes, setConsignes] = useState<ConsigneSignalee[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     setChargement(true);
     setErreur(null);
-    const [a, s] = await Promise.all([chargerAvis(), chargerSignalements()]);
+    const [a, s, c] = await Promise.all([chargerAvis(), chargerSignalements(), chargerConsignes()]);
     if (a.success) setAvis(a.donnees);
     if (s.success) setSignalements(s.donnees);
+    if (c.success) setConsignes(c.donnees);
     if (!a.success) setErreur(a.error);
     else if (!s.success) setErreur(s.error);
+    else if (!c.success) setErreur(c.error);
     setChargement(false);
   }, []);
 
@@ -118,23 +128,36 @@ export default function AdminScreen() {
     [signalements, filtreFonctionnalite, filtreStatut],
   );
 
+  // Les consignes n'ont pas de « fonctionnalité » : seul le filtre de statut s'y applique.
+  const consignesAffichees = useMemo(
+    () => consignes.filter((c) => filtreStatut === 'tous' || c.statut === filtreStatut),
+    [consignes, filtreStatut],
+  );
+
   const moyenne = noteMoyenne(avis);
   const nouveauxAvis = avis.filter((a) => a.statut === 'nouveau').length;
   const bloquantsOuverts = signalements.filter((s) => s.gravite === 'bloquant' && s.statut !== 'traite').length;
   const nouveauxSignalements = signalements.filter((s) => s.statut === 'nouveau').length;
+  const nouvellesConsignes = consignes.filter((c) => c.statut === 'nouveau').length;
 
-  async function cycler(collectionRetours: typeof COLLECTION_AVIS | typeof COLLECTION_SIGNALEMENTS, id: string, courant: Statut) {
+  async function cycler(
+    collectionRetours: typeof COLLECTION_AVIS | typeof COLLECTION_SIGNALEMENTS | typeof COLLECTION_CONSIGNES,
+    id: string,
+    courant: Statut,
+  ) {
     const suivant = statutSuivant(courant);
     const maj = <T extends { id: string; statut: Statut }>(liste: T[]) =>
       liste.map((r) => (r.id === id ? { ...r, statut: suivant } : r));
     // Affichage immédiat, puis retour en arrière si l'écriture échoue.
     if (collectionRetours === COLLECTION_AVIS) setAvis(maj);
+    else if (collectionRetours === COLLECTION_CONSIGNES) setConsignes(maj);
     else setSignalements(maj);
     const resultat = await changerStatut(collectionRetours, id, suivant);
     if (!resultat.success) {
       const annuler = <T extends { id: string; statut: Statut }>(liste: T[]) =>
         liste.map((r) => (r.id === id ? { ...r, statut: courant } : r));
       if (collectionRetours === COLLECTION_AVIS) setAvis(annuler);
+      else if (collectionRetours === COLLECTION_CONSIGNES) setConsignes(annuler);
       else setSignalements(annuler);
       ui.toast(resultat.error ?? 'Erreur', 'error');
     }
@@ -144,11 +167,12 @@ export default function AdminScreen() {
   async function exporter(seulementNouveaux: boolean) {
     const a = seulementNouveaux ? avis.filter((r) => r.statut === 'nouveau') : avis;
     const s = seulementNouveaux ? signalements.filter((r) => r.statut === 'nouveau') : signalements;
-    if (a.length + s.length === 0) {
+    const c = seulementNouveaux ? consignes.filter((r) => r.statut === 'nouveau') : consignes;
+    if (a.length + s.length + c.length === 0) {
       ui.toast('Aucun retour à exporter.', 'error');
       return;
     }
-    const rapport = construireRapport(a, s);
+    const rapport = construireRapport(a, s, c);
     try {
       if (Platform.OS === 'web') {
         await navigator.clipboard.writeText(rapport);
@@ -180,7 +204,7 @@ export default function AdminScreen() {
         <View style={styles.compteurs}>
           <Compteur valeur={String(avis.length)} titre="Avis" />
           <Compteur valeur={moyenne === null ? '—' : `${moyenne}/5`} titre="Note moyenne" />
-          <Compteur valeur={String(nouveauxAvis + nouveauxSignalements)} titre="Nouveaux" />
+          <Compteur valeur={String(nouveauxAvis + nouveauxSignalements + nouvellesConsignes)} titre="Nouveaux" />
           <Compteur valeur={String(bloquantsOuverts)} titre="Bloquants ouverts" alerte={bloquantsOuverts > 0} />
         </View>
 
@@ -200,12 +224,14 @@ export default function AdminScreen() {
         </Text>
 
         <ChoixSegment etiquette="Retours" options={ONGLETS} valeur={onglet} onChange={setOnglet} />
-        <ChoixPuces
-          etiquette="Fonctionnalité"
-          options={FILTRES_FONCTIONNALITE}
-          valeur={filtreFonctionnalite}
-          onChange={setFiltreFonctionnalite}
-        />
+        {onglet !== 'consignes' ? (
+          <ChoixPuces
+            etiquette="Fonctionnalité"
+            options={FILTRES_FONCTIONNALITE}
+            valeur={filtreFonctionnalite}
+            onChange={setFiltreFonctionnalite}
+          />
+        ) : null}
         <ChoixPuces etiquette="Statut" options={FILTRES_STATUT} valeur={filtreStatut} onChange={setFiltreStatut} />
 
         <BoutonSecondaire onPress={charger} disabled={chargement} style={{ marginBottom: 16 }}>
@@ -215,7 +241,30 @@ export default function AdminScreen() {
         {chargement ? <ActivityIndicator color={couleurs.marque} style={{ marginVertical: 24 }} /> : null}
         {erreur ? <Text style={styles.erreur}>{erreur}</Text> : null}
 
-        {onglet === 'avis'
+        {onglet === 'consignes'
+          ? consignesAffichees.map((c) => (
+              <View key={c.id} style={styles.carte}>
+                <View style={styles.carteHaut}>
+                  <Text style={styles.carteTitre}>{c.nom || 'Produit sans nom'}</Text>
+                  <PuceStatut statut={c.statut} onPress={() => cycler(COLLECTION_CONSIGNES, c.id, c.statut)} />
+                </View>
+                <Text style={styles.carteMeta}>Code-barres : {c.ean}</Text>
+                <Text style={styles.carteTexte}>
+                  Affiché : {titresBacs(c.triAffiche)}
+                  {c.detailAffiche ? ` (${c.detailAffiche})` : ''}
+                </Text>
+                <Text style={styles.carteMeta}>Origine : {c.origine}</Text>
+                <Text style={styles.carteTexte}>
+                  Proposé : {c.triSuggere.length ? titresBacs(c.triSuggere) : 'aucune proposition'}
+                </Text>
+                {c.commentaire ? <Text style={styles.carteTexte}>{c.commentaire}</Text> : null}
+                <Text style={styles.carteMeta}>
+                  {dateCourte(c.creeLe)} · v{c.versionApp} · {c.plateforme}
+                  {c.modeleAppareil ? ` · ${c.modeleAppareil}` : ''}
+                </Text>
+              </View>
+            ))
+          : onglet === 'avis'
           ? avisAffiches.map((a) => (
               <View key={a.id} style={styles.carte}>
                 <View style={styles.carteHaut}>
@@ -248,7 +297,8 @@ export default function AdminScreen() {
               </View>
             ))}
 
-        {!chargement && (onglet === 'avis' ? avisAffiches.length : signalementsAffiches.length) === 0 ? (
+        {!chargement &&
+        (onglet === 'avis' ? avisAffiches.length : onglet === 'consignes' ? consignesAffichees.length : signalementsAffiches.length) === 0 ? (
           <Text style={styles.vide}>Aucun retour avec ces filtres.</Text>
         ) : null}
       </ScrollView>

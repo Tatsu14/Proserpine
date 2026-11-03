@@ -5,8 +5,8 @@
  * Le rapport contient : une demande d'analyse, des chiffres clés, puis chaque retour sur une ligne.
  * Fonctions pures (aucun accès réseau) : faciles à tester.
  */
-import type { Avis, Signalement } from './admin-retours';
-import { FONCTIONNALITES, GRAVITES, TYPES_AVIS } from './retours';
+import type { Avis, ConsigneSignalee, Signalement } from './admin-retours';
+import { BACS, FONCTIONNALITES, GRAVITES, TYPES_AVIS } from './retours';
 
 const libelle = (liste: readonly { id: string; libelle: string }[], id: string) =>
   liste.find((e) => e.id === id)?.libelle ?? id;
@@ -33,7 +33,12 @@ export function noteMoyenne(avis: Avis[]): number | null {
   return Math.round((avis.reduce((somme, a) => somme + a.note, 0) / avis.length) * 10) / 10;
 }
 
-export function construireRapport(avis: Avis[], signalements: Signalement[], maintenant: Date = new Date()): string {
+export function construireRapport(
+  avis: Avis[],
+  signalements: Signalement[],
+  consignes: ConsigneSignalee[] = [],
+  maintenant: Date = new Date(),
+): string {
   const lignes: string[] = [];
 
   lignes.push('# Retours utilisateurs — application Proserpine');

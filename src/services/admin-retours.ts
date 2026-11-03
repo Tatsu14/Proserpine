@@ -10,9 +10,12 @@ import { collection, doc, getDocs, limit, orderBy, query, updateDoc } from 'fire
 import { db } from './firebase';
 import {
   COLLECTION_AVIS,
+  COLLECTION_CONSIGNES,
   COLLECTION_SIGNALEMENTS,
+  type Bac,
   type Fonctionnalite,
   type Gravite,
+  type OrigineConsigne,
   type TypeAvis,
 } from './retours';
 
@@ -50,6 +53,19 @@ export type Signalement = Technique & {
   gravite: Gravite;
   action: string;
   description: string;
+  creeLe: Date | null;
+  statut: Statut;
+};
+
+export type ConsigneSignalee = Technique & {
+  id: string;
+  ean: string;
+  nom: string;
+  triAffiche: Bac[];
+  detailAffiche: string;
+  origine: OrigineConsigne;
+  triSuggere: Bac[];
+  commentaire: string;
   creeLe: Date | null;
   statut: Statut;
 };
@@ -124,9 +140,36 @@ export async function chargerSignalements(): Promise<ResultatChargement<Signalem
   }
 }
 
+export async function chargerConsignes(): Promise<ResultatChargement<ConsigneSignalee>> {
+  try {
+    const instantane = await getDocs(
+      query(collection(db, COLLECTION_CONSIGNES), orderBy('creeLe', 'desc'), limit(LIMITE_CHARGEMENT)),
+    );
+    const donnees = instantane.docs.map((s) => {
+      const d = s.data() as any;
+      return {
+        id: s.id,
+        ean: d.ean ?? '',
+        nom: d.nom ?? '',
+        triAffiche: Array.isArray(d.triAffiche) ? d.triAffiche : [],
+        detailAffiche: d.detailAffiche ?? '',
+        origine: d.origine,
+        triSuggere: Array.isArray(d.triSuggere) ? d.triSuggere : [],
+        commentaire: d.commentaire ?? '',
+        creeLe: lireDate(d.creeLe),
+        statut: lireStatut(d.statut),
+        ...technique(d),
+      } as ConsigneSignalee;
+    });
+    return { success: true, donnees };
+  } catch {
+    return { success: false, error: MESSAGE_ECHEC };
+  }
+}
+
 /** Change le statut d'un retour. Les règles n'autorisent à modifier que ce champ. */
 export async function changerStatut(
-  collectionRetours: typeof COLLECTION_AVIS | typeof COLLECTION_SIGNALEMENTS,
+  collectionRetours: typeof COLLECTION_AVIS | typeof COLLECTION_SIGNALEMENTS | typeof COLLECTION_CONSIGNES,
   id: string,
   statut: Statut,
 ): Promise<{ success: boolean; error?: string }> {

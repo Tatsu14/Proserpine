@@ -20,6 +20,20 @@ export type ResultatRetour = { success: boolean; error?: string };
 
 export const COLLECTION_AVIS = 'retours_avis';
 export const COLLECTION_SIGNALEMENTS = 'retours_signalements';
+export const COLLECTION_CONSIGNES = 'retours_consignes';
+
+/** Bacs de tri (mêmes identifiants que `CATEGORIES` dans tri.js). */
+export const BACS = [
+  { id: 'pmc', libelle: 'PMC' },
+  { id: 'paper', libelle: 'Papiers & cartons' },
+  { id: 'glass', libelle: 'Verre' },
+  { id: 'organic', libelle: 'Déchets organiques' },
+  { id: 'residual', libelle: 'Déchets résiduels' },
+  { id: 'danger', libelle: 'Recyparc' },
+] as const;
+
+/** Origine de la consigne signalée : lue sur l'emballage, déduite ou choisie par l'utilisateur. */
+export const ORIGINES_CONSIGNE = ['lu', 'deduit', 'choisi'] as const;
 
 export const FONCTIONNALITES = [
   { id: 'scan', libelle: 'Scan' },
@@ -45,12 +59,17 @@ export const GRAVITES = [
 export type Fonctionnalite = (typeof FONCTIONNALITES)[number]['id'];
 export type TypeAvis = (typeof TYPES_AVIS)[number]['id'];
 export type Gravite = (typeof GRAVITES)[number]['id'];
+export type Bac = (typeof BACS)[number]['id'];
+export type OrigineConsigne = (typeof ORIGINES_CONSIGNE)[number];
 
 // Limites de longueur (reprises à l'identique dans les règles Firestore).
 export const LONGUEUR_MAX_AVIS = 500;
 export const LONGUEUR_MAX_ACTION = 200;
 export const LONGUEUR_MAX_DESCRIPTION = 1000;
 export const LONGUEUR_MIN_DESCRIPTION = 10;
+export const LONGUEUR_MAX_COMMENTAIRE_CONSIGNE = 300;
+export const LONGUEUR_MAX_DETAIL_CONSIGNE = 300;
+export const LONGUEUR_MAX_NOM_PRODUIT = 120;
 
 export type SaisieAvis = {
   fonctionnalite: Fonctionnalite | null;
@@ -64,6 +83,22 @@ export type SaisieSignalement = {
   gravite: Gravite | null;
   action: string;
   description: string;
+};
+
+/** Signalement d'une consigne de tri fausse, depuis la fiche d'un produit. */
+export type SaisieConsigne = {
+  /** Code-barres du produit. */
+  ean: string;
+  /** Nom du produit (pour s'y retrouver dans l'écran admin). */
+  nom: string;
+  /** Bacs affichés sur la fiche au moment du signalement. */
+  triAffiche: Bac[];
+  /** Matières affichées dans ces bacs (texte libre, pour comprendre la consigne contestée). */
+  detailAffiche: string;
+  origine: OrigineConsigne;
+  /** Bacs proposés par l'utilisateur ; vide = il n'a rien proposé. */
+  triSuggere: Bac[];
+  commentaire: string;
 };
 
 const ids = (liste: readonly { id: string }[]) => liste.map((e) => e.id);
@@ -110,6 +145,19 @@ export function verifierSignalement(saisie: SaisieSignalement): string | null {
   return null;
 }
 
+/** Renvoie un message d'erreur si la saisie est invalide, sinon null. */
+export function verifierConsigne(saisie: SaisieConsigne): string | null {
+  if (!/^\d{4,20}$/.test(saisie.ean)) return 'Code du produit invalide.';
+  const bacsValides = (liste: Bac[]) => liste.every((b) => ids(BACS).includes(b)) && new Set(liste).size === liste.length;
+  if (saisie.triAffiche.length === 0 || !bacsValides(saisie.triAffiche)) return 'Consigne affichée invalide.';
+  if (!bacsValides(saisie.triSuggere)) return 'Tri proposé invalide.';
+  if (!ORIGINES_CONSIGNE.includes(saisie.origine)) return 'Origine de la consigne invalide.';
+  if (saisie.commentaire.trim().length > LONGUEUR_MAX_COMMENTAIRE_CONSIGNE) {
+    return `Le commentaire ne doit pas dépasser ${LONGUEUR_MAX_COMMENTAIRE_CONSIGNE} caractères.`;
+  }
+  return null;
+}
+
 const MESSAGE_ECHEC = "L'envoi a échoué. Vérifiez votre connexion puis réessayez.";
 
 export async function envoyerAvis(saisie: SaisieAvis): Promise<ResultatRetour> {
@@ -139,6 +187,27 @@ export async function envoyerSignalement(saisie: SaisieSignalement): Promise<Res
       gravite: saisie.gravite,
       action: saisie.action.trim(),
       description: saisie.description.trim(),
+      ...infosTechniques(),
+      creeLe: serverTimestamp(),
+    });
+    return { success: true };
+  } catch {
+    return { success: false, error: MESSAGE_ECHEC };
+  }
+}
+
+export async function envoyerSignalementConsigne(saisie: SaisieConsigne): Promise<ResultatRetour> {
+  const erreur = verifierConsigne(saisie);
+  if (erreur) return { success: false, error: erreur };
+  try {
+    await addDoc(collection(db, COLLECTION_CONSIGNES), {
+      ean: saisie.ean,
+      nom: saisie.nom.trim().slice(0, LONGUEUR_MAX_NOM_PRODUIT),
+      triAffiche: saisie.triAffiche,
+      detailAffiche: saisie.detailAffiche.trim().slice(0, LONGUEUR_MAX_DETAIL_CONSIGNE),
+      origine: saisie.origine,
+      triSuggere: saisie.triSuggere,
+      commentaire: saisie.commentaire.trim(),
       ...infosTechniques(),
       creeLe: serverTimestamp(),
     });

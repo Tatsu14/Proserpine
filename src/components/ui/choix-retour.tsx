@@ -49,6 +49,42 @@ export function ChoixPuces<T extends string>({ etiquette, options, valeur, onCha
   );
 }
 
+/** Comme ChoixPuces, mais plusieurs réponses possibles (ex. un produit qui va dans deux bacs). */
+export function ChoixPucesMultiples<T extends string>({
+  etiquette,
+  options,
+  valeur,
+  onChange,
+}: {
+  etiquette: string;
+  options: readonly Option<T>[];
+  valeur: T[];
+  onChange: (ids: T[]) => void;
+}) {
+  const basculer = (id: T) => onChange(valeur.includes(id) ? valeur.filter((v) => v !== id) : [...valeur, id]);
+  return (
+    <View style={styles.bloc}>
+      <Etiquette>{etiquette}</Etiquette>
+      <View style={styles.puces}>
+        {options.map((o) => {
+          const actif = valeur.includes(o.id);
+          return (
+            <Pressable
+              key={o.id}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: actif }}
+              onPress={() => basculer(o.id)}
+              style={[styles.puce, actif && styles.puceActive]}
+            >
+              <Text style={[styles.puceTexte, actif && styles.puceTexteActif]}>{o.libelle}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export function ChoixSegment<T extends string>({ etiquette, options, valeur, onChange }: PropsChoix<T>) {
   return (
     <View style={styles.bloc}>

@@ -112,6 +112,7 @@ export function SectionTri({
   separation,
   explication,
   onChanger,
+  onSignaler,
   onOuvrirGuide,
 }: {
   bacs: Bac[];
@@ -124,6 +125,8 @@ export function SectionTri({
   explication?: string | null;
   /** Si fourni, affiche « Changer de matière » (cas où la matière a été choisie par l'utilisateur). */
   onChanger?: () => void;
+  /** Si fourni, affiche le lien « Cette consigne est fausse ? Signaler » sous la section. */
+  onSignaler?: () => void;
   onOuvrirGuide: (categorie: string) => void;
 }) {
   return (
@@ -173,6 +176,13 @@ export function SectionTri({
             matière sur l’emballage avant de jeter.
           </Text>
         </View>
+      ) : null}
+
+      {onSignaler ? (
+        <Pressable accessibilityRole="button" onPress={onSignaler} style={styles.lienSignaler}>
+          <Icone nom="report_problem" taille={18} couleur={couleurs.texteAttenue} />
+          <Text style={styles.lienSignalerTexte}>Cette consigne est fausse ? Signaler</Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -241,4 +251,7 @@ const styles = StyleSheet.create({
   gras: { fontFamily: police.gras },
   lienChanger: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: 4 },
   lienChangerTexte: { fontFamily: police.extraGras, fontSize: tailleTexte.base, color: '#00663A' },
+  // Lien discret : sobre, pour ne pas détourner l'attention des consignes.
+  lienSignaler: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: 4 },
+  lienSignalerTexte: { fontFamily: police.semiGras, fontSize: tailleTexte.base, color: couleurs.texteAttenue, textDecorationLine: 'underline' },
 });

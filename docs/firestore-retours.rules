@@ -73,5 +73,39 @@ service cloud.firestore {
         && request.resource.data.statut in ['nouveau', 'en_cours', 'traite'];
       allow delete: if false;
     }
+
+    // --- Produits (À PRÉVOIR avec le système premium) ---
+    // L'ajout/la modification de produit par les utilisateurs sera réservé aux abonnés (voir
+    // src/services/droits.ts). Quand cette fonction existera, sa collection devra être protégée ICI,
+    // par exemple : allow create, update: if request.auth != null && request.auth.token.premium == true;
+    // (« premium » = custom claim Firebase posé côté serveur à l'abonnement). Le signalement de
+    // consigne ci-dessous reste, lui, ouvert à tout utilisateur connecté.
+
+    // Consignes de tri signalées comme fausses depuis la fiche produit. Aucun identifiant utilisateur.
+    match /retours_consignes/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['ean', 'nom', 'triAffiche', 'detailAffiche', 'origine',
+             'triSuggere', 'commentaire', 'versionApp', 'plateforme', 'versionSysteme', 'modeleAppareil', 'creeLe'])
+        && request.resource.data.keys().hasAll(['ean', 'nom', 'triAffiche', 'detailAffiche', 'origine',
+             'triSuggere', 'commentaire', 'versionApp', 'plateforme', 'versionSysteme', 'modeleAppareil', 'creeLe'])
+        && request.resource.data.ean is string
+        && request.resource.data.ean.matches('^[0-9]{4,20}$')
+        && request.resource.data.nom is string && request.resource.data.nom.size() <= 120
+        && request.resource.data.triAffiche is list
+        && request.resource.data.triAffiche.size() >= 1 && request.resource.data.triAffiche.size() <= 6
+        && request.resource.data.triAffiche.hasOnly(['pmc', 'paper', 'glass', 'organic', 'residual', 'danger'])
+        && request.resource.data.detailAffiche is string && request.resource.data.detailAffiche.size() <= 300
+        && request.resource.data.origine in ['lu', 'deduit', 'choisi']
+        && request.resource.data.triSuggere is list
+        && request.resource.data.triSuggere.size() <= 6
+        && request.resource.data.triSuggere.hasOnly(['pmc', 'paper', 'glass', 'organic', 'residual', 'danger'])
+        && request.resource.data.commentaire is string && request.resource.data.commentaire.size() <= 300
+        && infosTechniquesValides(request.resource.data);
+      allow read: if estAdmin();
+      allow update: if estAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['statut'])
+        && request.resource.data.statut in ['nouveau', 'en_cours', 'traite'];
+      allow delete: if false;
+    }
   }
 }

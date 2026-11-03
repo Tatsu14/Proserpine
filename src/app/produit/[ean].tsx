@@ -212,6 +212,20 @@ export default function ProduitScreen() {
   // et aucun pour le Recyparc seul ou en l'absence de consigne (textes provisoires).
   const conseil = fiabilite !== 'aucune' ? conseilPour(bacs) : null;
 
+  // Signalement d'une consigne fausse : on transmet le produit, le tri affiché et son origine
+  // (l'utilisateur ne retape rien). Pas de lien quand aucune consigne n'est affichée.
+  const signaler = () =>
+    router.push({
+      pathname: '/signaler-consigne',
+      params: {
+        ean: String(ean),
+        nom: produit.nom ?? '',
+        bacs: bacs.map((b) => b.categorie).join(','),
+        detail: bacs.map((b) => b.elements.join(', ')).join(' ; '),
+        origine: fiabilite,
+      },
+    });
+
   // Nom court + « marque · quantité » (la quantité sort du nom ; les listes de marques sont réduites à la première).
   const affiche = formaterProduit(produit.nom, produit.marque, produit.donnees_brutes?.quantity);
 
@@ -240,6 +254,7 @@ export default function ProduitScreen() {
             separation={separation}
             explication={choix?.explication}
             onChanger={choix ? () => setMatiereChoisie(null) : undefined}
+            onSignaler={signaler}
             onOuvrirGuide={(categorie) => router.push(`/guide/${categorie}`)}
           />
         )}
