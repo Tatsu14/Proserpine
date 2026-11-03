@@ -16,6 +16,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { CadreMobile } from '@/components/ui/cadre-mobile';
+import { OrientationEcran } from '@/components/ui/orientation-ecran';
 import { UiProvider } from '@/components/ui/ui-provider';
 import { AuthProvider } from '@/contexts/auth';
 import { ReglagesProvider } from '@/contexts/reglages';
@@ -55,6 +56,7 @@ export default function RootLayout() {
           <AuthProvider>
             <ReglagesProvider>
             <UiProvider>
+              <OrientationEcran />
               <StatusBar style="dark" />
               {/* Les routes sont auto-découvertes : index (dispatcher), (auth), (tabs), onboarding,
                   produit/[ean], guide/[type], historique, indisponible. */}

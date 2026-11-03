@@ -3,7 +3,7 @@
     "name": "Proserpine",
     "slug": "proserpine",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "proserpinenative",
     "userInterfaceStyle": "light",
@@ -55,7 +55,17 @@
         }
       ],
       "expo-image",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/liberer-orientation-mlkit.js",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,
