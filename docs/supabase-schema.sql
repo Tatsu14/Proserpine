@@ -35,8 +35,15 @@
 --      Risque assumé : des données d'emballage venues d'OFF restent privées. Si OFF indique que
 --      cela contrevient à leurs règles, il suffira de partager ou de changer cette table.
 --
---   3. AUCUN identifiant d'utilisateur dans les propositions pour l'instant (comme les retours
---      existants). À décider avant la phase premium, car cela touche la confidentialité.
+--   3. IDENTIFIANT PSEUDONYME dans les propositions (option B), pour pouvoir modérer : retrouver
+--      et supprimer les propositions d'un compte, repérer un abus, désactiver le compte dans la
+--      console Firebase. C'est l'identifiant technique (UID) du compte Firebase : ni e-mail ni nom.
+--      CONSERVATION : 12 mois au plus après le traitement de la proposition (après la création si
+--      elle n'est jamais traitée), puis la colonne est vidée chaque nuit par prive.purger_identifiants()
+--      (planifié avec pg_cron). Les retours (avis, signalements) n'ont toujours aucun identifiant.
+--      À FAIRE : (a) une phrase dans la politique de confidentialité ; (b) vider cette colonne à la
+--      suppression du compte, quand l'app écrira dans Supabase ; (c) pg_cron ne tourne pas tant que
+--      le projet gratuit est en pause (1 semaine d'inactivité) : la purge a alors du retard.
 --
 -- Attribution à afficher dans l'app, sur chaque écran qui montre des données OFF :
 --   « (c) Open Food Facts contributors » avec un lien vers https://world.openfoodfacts.org
@@ -160,7 +167,7 @@ create table prive.emballages (
 create index emballages_ean_idx on prive.emballages (ean);
 
 -- Propositions des utilisateurs : une « boîte aux lettres ». Le code-barres, le nom et la marque
--- suffisent ; les emballages proposés sont facultatifs. Aucun identifiant d'utilisateur (voir décision 3).
+-- suffisent ; les emballages proposés sont facultatifs. Identifiant pseudonyme conservé 12 mois (décision 3).
 -- Quand l'administrateur valide, il crée la ligne dans public.produits (origine « proserpine »).
 create table prive.propositions (
   id                    bigint generated always as identity primary key,
@@ -171,8 +178,14 @@ create table prive.propositions (
   statut                text not null default 'en_attente' check (statut in ('en_attente', 'accepte', 'refuse')),
   motif_refus           text,
   cree_le               timestamptz not null default now(),
-  traite_le             timestamptz
+  traite_le             timestamptz,
+  utilisateur_id        text                          -- UID Firebase (pseudonyme), vidé après 12 mois
 );
+
+comment on column prive.propositions.utilisateur_id is
+  'Identifiant technique (UID) du compte Firebase ayant fait la proposition. Pseudonyme : ni e-mail ni nom. Conservé 12 mois au plus après le traitement (ou après la création si jamais traitée), puis vidé par prive.purger_identifiants(). À vider aussi à la suppression du compte (à brancher quand l''app écrira dans Supabase).';
+
+create index propositions_utilisateur_idx on prive.propositions (utilisateur_id) where utilisateur_id is not null;
 
 create index propositions_statut_idx on prive.propositions (statut);
 
@@ -190,3 +203,57 @@ alter table prive.off_brut           enable row level security;
 alter table prive.codes_alternatifs  enable row level security;
 alter table prive.emballages         enable row level security;
 alter table prive.propositions       enable row level security;
+
+
+-- -------------------------------------------------------------------------------------
+-- 3. CONSERVATION DE 12 MOIS de l'identifiant des propositions (migrations appliquées le 2026-11-16)
+-- -------------------------------------------------------------------------------------
+
+-- Vide l'identifiant des propositions dont le délai de conservation (12 mois) est dépassé.
+create or replace function prive.purger_identifiants()
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+declare
+  n integer;
+begin
+  update prive.propositions
+     set utilisateur_id = null
+   where utilisateur_id is not null
+     and coalesce(traite_le, cree_le) < now() - interval '12 months';
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+revoke all on function prive.purger_identifiants() from public, anon, authenticated;
+
+-- Le délai de 12 mois part du traitement : la date est posée automatiquement quand le statut quitte « en_attente ».
+create or replace function prive.marquer_traitement()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.statut = 'en_attente' and new.statut <> 'en_attente' and new.traite_le is null then
+    new.traite_le := now();
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function prive.marquer_traitement() from public, anon, authenticated;
+
+create trigger propositions_traitement
+  before update on prive.propositions
+  for each row execute function prive.marquer_traitement();
+
+-- Planification quotidienne (pg_cron) : tous les jours à 03h17 UTC.
+create extension if not exists pg_cron with schema pg_catalog;
+
+select cron.schedule(
+  'purge-identifiants-propositions',
+  '17 3 * * *',
+  $$select prive.purger_identifiants()$$
+);
