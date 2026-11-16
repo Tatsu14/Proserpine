@@ -82,9 +82,9 @@ create table public.produits (
   nom                      text,
   marque                   text,
   quantite                 text,                            -- texte libre, ex. « 8 x 33 cl »
-  categories               text[] not null default '{}',    -- tags de catégories d'OFF
-  pays                     text[] not null default '{}',    -- pays de vente (tags d'OFF)
-  url_source               text,                            -- page du produit chez OFF (attribution)
+  -- (colonnes categories, pays, url_source retirées le 2026-11-16 : rien ne les lit. Le lien vers la
+  --  fiche OFF, pour l'attribution, se reconstruit depuis le code-barres :
+  --  https://world.openfoodfacts.org/product/<ean>. Catégories et pays restent dans prive.off_brut.)
   modifie_par_proserpine   boolean not null default false,  -- l'identité a été corrigée par rapport à OFF
   envoye_a_off_le          timestamptz,                     -- vide = pas encore renvoyé à OFF
   copie_le                 timestamptz not null default now(),
