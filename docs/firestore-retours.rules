@@ -74,12 +74,33 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // --- Produits (À PRÉVOIR avec le système premium) ---
-    // L'ajout/la modification de produit par les utilisateurs sera réservé aux abonnés (voir
-    // src/services/droits.ts). Quand cette fonction existera, sa collection devra être protégée ICI,
+    // --- Base de produits de Proserpine (voir src/services/base-produits.ts) ---
+    // Lecture par tout utilisateur connecté ; écriture réservée à l'administrateur.
+    // PLUS TARD (système premium) : l'ajout/la modification par les abonnés, voir src/services/droits.ts,
     // par exemple : allow create, update: if request.auth != null && request.auth.token.premium == true;
     // (« premium » = custom claim Firebase posé côté serveur à l'abonnement). Le signalement de
     // consigne ci-dessous reste, lui, ouvert à tout utilisateur connecté.
+    match /produits/{ean} {
+      allow read: if request.auth != null;
+      allow write: if estAdmin();
+    }
+
+    // EAN scannés mais introuvables, avec un compteur. L'app fait setDoc(merge) + increment(1) :
+    // c'est une création au premier passage, puis une mise à jour. Les utilisateurs ne peuvent
+    // QUE faire +1 (jamais lire, jamais effacer) ; aucun identifiant d'utilisateur n'est stocké.
+    match /produits_introuvables/{ean} {
+      allow create: if request.auth != null
+        && ean.matches('^[0-9]{8,14}$')
+        && request.resource.data.keys().hasOnly(['ean', 'compteur', 'dernierScan'])
+        && request.resource.data.ean == ean
+        && request.resource.data.compteur == 1
+        && request.resource.data.dernierScan == request.time;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['compteur', 'dernierScan'])
+        && request.resource.data.compteur == resource.data.compteur + 1
+        && request.resource.data.dernierScan == request.time;
+      allow read, delete: if estAdmin();
+    }
 
     // Consignes de tri signalées comme fausses depuis la fiche produit. Aucun identifiant utilisateur.
     match /retours_consignes/{id} {

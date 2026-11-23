@@ -38,7 +38,7 @@ import { scoreColor } from '@/constants/colors';
 import { useAuth } from '@/contexts/auth';
 import { useReglages } from '@/contexts/reglages';
 import { couleurs } from '@/design/tokens';
-import { rechercherProduitParEAN } from '@/services/api';
+import { chercherProduit, triDepuisBase } from '@/services/base-produits';
 import { ecrireProduitCache, lireProduitCache } from '@/services/cache';
 import { calculerEcoScore } from '@/services/ecoscore';
 import { enregistrerScan } from '@/services/historique';
@@ -104,7 +104,8 @@ export default function ProduitScreen() {
     // Calcule score + tri et affiche le produit. Renvoie le score (pour l'historique).
     const appliquer = (p: any) => {
       const s: any = calculerEcoScore(p.donnees_brutes);
-      const t: any = analyserEmballage(p.donnees_brutes);
+      // Une consigne de la base de Proserpine passe avant le calcul à partir des données OFF.
+      const t: any = p.consigneBase ? triDepuisBase(p.consigneBase) : analyserEmballage(p.donnees_brutes);
       setProduit(p);
       setScore(s);
       setTri(t);
@@ -127,7 +128,7 @@ export default function ProduitScreen() {
       }
 
       // 2. Revalidation réseau (résiliente : timeout + retry côté api.js).
-      const frais: any = await rechercherProduitParEAN(code);
+      const frais: any = await chercherProduit(code);
       if (!actif) return;
 
       if (frais) {

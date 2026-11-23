@@ -36,12 +36,20 @@ async function fetchResilient(url, { timeoutMs = 7000, retries = 1 } = {}) {
 }
 
 /**
- * Recherche un produit par son code-barres (EAN)
+ * Recherche un produit par son code-barres (EAN) et dit si « introuvable » est CERTAIN.
  * Parcourt les API en cascade et s'arrête à la première correspondance trouvée.
+ *
+ * Pourquoi `introuvableCertain` : un `null` peut vouloir dire « ce produit n'existe pas » ou
+ * « le réseau a lâché » (timeout, erreur 500…). Pour tenir la liste des produits à compléter,
+ * on ne doit noter que les vrais « inconnu ». Une API qui ne connaît pas l'EAN répond
+ * 404 + `{"status":0}` : on exige cette réponse nette des TROIS API.
+ *
  * @param {string} ean Le code EAN scanné ou entré manuellement
- * @returns {Object|null} Objet produit normalisé ou null si introuvable
+ * @returns {{ produit: Object|null, introuvableCertain: boolean }}
  */
-export async function rechercherProduitParEAN(ean) {
+export async function rechercherProduitDetaille(ean) {
+    let reponsesInconnu = 0; // API ayant répondu clairement « produit inconnu »
+
     for (const api of APIS) {
         try {
             const response = await fetchResilient(`${api.url}/api/v2/product/${ean}.json`, {
@@ -49,22 +57,39 @@ export async function rechercherProduitParEAN(ean) {
                 retries: 1,
             });
 
-            // Si la requête échoue techniquement (ex: 404, 500), on passe à la suivante
-            if (!response.ok) continue;
-            
+            // Si la requête échoue techniquement (ex: 404, 500), on passe à la suivante.
+            // Un 404 accompagné de status 0 reste compté : c'est la réponse normale « inconnu ».
+            if (!response.ok) {
+                if (response.status === 404) {
+                    const inconnu = await response.json().catch(() => null);
+                    if (inconnu && inconnu.status === 0) reponsesInconnu++;
+                }
+                continue;
+            }
+
             const data = await response.json();
-            
+
             // status: 1 indique que le produit a été trouvé
             if (data.status === 1 && data.product) {
-                return normaliserProduit(data.product, api.id);
+                return { produit: normaliserProduit(data.product, api.id), introuvableCertain: false };
             }
+            if (data.status === 0) reponsesInconnu++;
         } catch (error) {
             console.error(`Erreur fetch EAN via ${api.id}:`, error);
         }
     }
-    
+
     // Si la boucle se termine sans rien trouver
-    return null;
+    return { produit: null, introuvableCertain: reponsesInconnu === APIS.length };
+}
+
+/**
+ * Recherche un produit par son code-barres (EAN) — version simple : l'objet produit ou null.
+ * @param {string} ean Le code EAN scanné ou entré manuellement
+ * @returns {Object|null} Objet produit normalisé ou null si introuvable
+ */
+export async function rechercherProduitParEAN(ean) {
+    return (await rechercherProduitDetaille(ean)).produit;
 }
 
 /**
