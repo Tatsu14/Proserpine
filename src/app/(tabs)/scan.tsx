@@ -21,6 +21,7 @@ import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { rechercherProduitParEAN } from '@/services/api';
 import { ecrireProduitCache } from '@/services/cache';
+import { creerConfirmateur } from '@/services/ean';
 
 const CLE_PERMISSION = 'camera_permission';
 const TEXTE_ATTENTE = 'Pointez la caméra vers un code-barre';
@@ -36,6 +37,8 @@ export default function ScanScreen() {
   const [texte, setTexte] = useState(TEXTE_ATTENTE);
   const [lampe, setLampe] = useState(false); // lampe de poche allumée ?
   const enTraitement = useRef(false);
+  // Contrôle des lectures de la caméra : clé de l'EAN valide + même code lu deux fois d'affilée.
+  const confirmateur = useRef(creerConfirmateur()).current;
 
   // Fond noir : icônes de la barre d'état en clair tant que le scanner est affiché.
   useEffect(() => {
@@ -67,6 +70,7 @@ export default function ScanScreen() {
     if (!enFocus || !permission) return;
     // On repart d'un état propre à chaque arrivée sur l'écran.
     enTraitement.current = false;
+    confirmateur.reinitialiser();
     setTexte(TEXTE_ATTENTE);
 
     // Déjà autorisée par le système : on démarre directement.
@@ -118,8 +122,12 @@ export default function ScanScreen() {
   // --- Un code-barres est lu ---
   const surCodeLu = async (resultat: BarcodeScanningResult) => {
     if (enTraitement.current) return;
-    enTraitement.current = true;
     const code = resultat.data;
+
+    // Lecture écartée (clé fausse) ou en attente d'une seconde lecture identique : la caméra continue,
+    // l'utilisateur ne voit rien (la confirmation prend une fraction de seconde).
+    if (confirmateur.lire(code, Date.now()) !== 'confirme') return;
+    enTraitement.current = true;
 
     setTexte('Code-barre détecté !');
     Vibration.vibrate(100);
@@ -142,6 +150,7 @@ export default function ScanScreen() {
         annuler: 'Rechercher manuellement',
         onConfirmer: () => {
           enTraitement.current = false;
+          confirmateur.reinitialiser();
           setTexte(TEXTE_ATTENTE);
           setCamera(true);
         },
