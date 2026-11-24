@@ -107,6 +107,11 @@ export function creerConfirmateur({
       return code;
     },
 
+    /** Vrai si deux codes valides se disputent l'image : l'écran peut alors prévenir que la lecture est difficile. */
+    incertain(): boolean {
+      return codeCourant !== null && douteux;
+    },
+
     /** À appeler quand un nouveau scan démarre (retour sur l'écran, « Scanner à nouveau »). */
     reinitialiser: remiseAZero,
   };

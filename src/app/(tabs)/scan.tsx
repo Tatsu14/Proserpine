@@ -12,7 +12,7 @@ import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'ex
 import { Stack, useIsFocused, useRouter } from 'expo-router';
 import { setStatusBarStyle } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Vibration, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Vibration, View } from 'react-native';
 import { Text } from '@/components/ui/texte';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,6 +25,11 @@ import { creerConfirmateur, DELAI_SECOURS_MS } from '@/services/ean';
 
 const CLE_PERMISSION = 'camera_permission';
 const TEXTE_ATTENTE = 'Pointez la caméra vers un code-barre';
+// Pendant le contrôle d'une lecture (voir services/ean.ts), la pastille le dit à l'utilisateur.
+const TEXTE_VERIFICATION = 'Code détecté, vérification…';
+const TEXTE_DIFFICILE = 'Lecture difficile, gardez le code immobile';
+// Sans nouvelle lecture pendant ce délai, la pastille revient au message d'attente.
+const RETOUR_ATTENTE_MS = 2500;
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -36,6 +41,7 @@ export default function ScanScreen() {
   const [camera, setCamera] = useState(false); // la caméra tourne-t-elle ?
   const [texte, setTexte] = useState(TEXTE_ATTENTE);
   const [lampe, setLampe] = useState(false); // lampe de poche allumée ?
+  const [verification, setVerification] = useState(false); // contrôle d'une lecture en cours : pastille + indicateur
   const enTraitement = useRef(false);
   // Contrôle des lectures de la caméra : clé de l'EAN valide + même code lu deux fois d'affilée
   // (+ filet de sécurité si la caméra ne relit jamais le même code, voir services/ean.ts).
@@ -45,8 +51,32 @@ export default function ScanScreen() {
     if (minuterie.current) clearTimeout(minuterie.current);
     minuterie.current = null;
   };
-  // Quitter l'écran : plus aucune acceptation différée.
-  useEffect(() => annulerMinuterie, []);
+  // Retour automatique de la pastille au message d'attente, et lectures rejetées récemment (bruit de la caméra).
+  const minuterieRetour = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rejets = useRef<number[]>([]);
+  const annulerRetour = () => {
+    if (minuterieRetour.current) clearTimeout(minuterieRetour.current);
+    minuterieRetour.current = null;
+  };
+  const afficherVerification = (message: string) => {
+    setTexte(message);
+    setVerification(true);
+    annulerRetour();
+    minuterieRetour.current = setTimeout(() => {
+      minuterieRetour.current = null;
+      rejets.current = [];
+      setTexte(TEXTE_ATTENTE);
+      setVerification(false);
+    }, RETOUR_ATTENTE_MS);
+  };
+  // Quitter l'écran : plus aucune acceptation ni message différé.
+  useEffect(
+    () => () => {
+      annulerMinuterie();
+      annulerRetour();
+    },
+    [],
+  );
 
   // Fond noir : icônes de la barre d'état en clair tant que le scanner est affiché.
   useEffect(() => {
@@ -79,7 +109,10 @@ export default function ScanScreen() {
     // On repart d'un état propre à chaque arrivée sur l'écran.
     enTraitement.current = false;
     annulerMinuterie();
+    annulerRetour();
+    rejets.current = [];
     confirmateur.reinitialiser();
+    setVerification(false);
     setTexte(TEXTE_ATTENTE);
 
     // Déjà autorisée par le système : on démarre directement.
@@ -135,10 +168,17 @@ export default function ScanScreen() {
     if (enTraitement.current) return;
     const code = resultat.data;
 
-    const verdict = confirmateur.lire(code, Date.now());
+    const maintenant = Date.now();
+    const verdict = confirmateur.lire(code, maintenant);
+
     if (verdict === 'confirme') {
       accepterCode(code);
-    } else if (verdict === 'en_attente') {
+      return;
+    }
+
+    if (verdict === 'en_attente') {
+      // Un code valide est vu mais pas encore confirmé : on le dit à l'utilisateur.
+      afficherVerification(confirmateur.incertain() ? TEXTE_DIFFICILE : TEXTE_VERIFICATION);
       // Filet de sécurité : si plus rien n'est lu pendant un court silence, ce code unique est accepté.
       annulerMinuterie();
       minuterie.current = setTimeout(() => {
@@ -146,8 +186,13 @@ export default function ScanScreen() {
         const secours = confirmateur.secours(Date.now());
         if (secours) accepterCode(secours);
       }, DELAI_SECOURS_MS + 50);
+      return;
     }
-    // verdict « rejete » : clé de contrôle fausse, lecture ignorée.
+
+    // « rejete » : clé de contrôle fausse. Une lecture isolée est du bruit et reste invisible ;
+    // si cela se répète (3 fois en 1,5 s), la lecture est difficile et on le dit.
+    rejets.current = rejets.current.filter((t) => maintenant - t < 1500).concat(maintenant);
+    if (rejets.current.length >= 3) afficherVerification(TEXTE_DIFFICILE);
   };
 
   // --- Un code est accepté : on cherche le produit ---
@@ -155,6 +200,8 @@ export default function ScanScreen() {
     if (enTraitement.current) return;
     enTraitement.current = true;
     annulerMinuterie();
+    annulerRetour();
+    setVerification(false);
 
     setTexte('Code-barre détecté !');
     Vibration.vibrate(100);
@@ -203,7 +250,8 @@ export default function ScanScreen() {
 
       {/* Texte d'aide : pastille en bas de l'écran (il ne masque ainsi rien de l'image) */}
       <View pointerEvents="none" style={[styles.couche, { bottom: 40 + marges.bottom }]}>
-        <View style={styles.pastille}>
+        <View style={styles.pastille} accessibilityLiveRegion="polite">
+          {verification ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
           <Text style={styles.texte}>{texte}</Text>
         </View>
       </View>
@@ -236,9 +284,18 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
   // Couche du texte d'aide, centrée en bas
   couche: { position: 'absolute', left: 0, right: 0, alignItems: 'center', zIndex: 10, paddingHorizontal: 16 },
-  pastille: { backgroundColor: 'rgba(0,0,0,0.55)', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 999 },
+  pastille: {
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   // .scan-text
   texte: {
+    flexShrink: 1,
     fontFamily: police.semiGras,
     fontSize: tailleTexte.md,
     color: '#FFFFFF',
