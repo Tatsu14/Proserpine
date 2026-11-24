@@ -13,6 +13,12 @@
  *      `fenetreMs` d'écart. Une lecture isolée et fausse est donc écartée. Dès qu'un autre code
  *      valide apparaît, le compte repart à zéro.
  *
+ *  (c) Le FILET DE SÉCURITÉ. Si la caméra ne relit jamais le même code (comportement non garanti
+ *      par la documentation d'expo-camera), la confirmation (b) bloquerait tout scan. Une lecture
+ *      valide qui reste seule pendant `secoursMs` est donc acceptée quand même, SAUF si un autre
+ *      code valide l'a précédée de peu : deux codes qui alternent restent bloqués, car on ne sait
+ *      pas lequel est le bon.
+ *
  * Ce fichier ne dépend ni de React ni de la caméra : il se teste seul, avec Node.
  */
 
@@ -35,11 +41,16 @@ export function cleEanValide(code: string): boolean {
 /** Résultat d'une lecture : ignorée (code impossible), à confirmer par une seconde lecture, ou acceptée. */
 export type VerdictLecture = 'rejete' | 'en_attente' | 'confirme';
 
+/** Silence (sans nouvelle lecture) au bout duquel une lecture valide isolée est acceptée, en millisecondes. */
+export const DELAI_SECOURS_MS = 1200;
+
 export type OptionsConfirmateur = {
   /** Nombre de lectures identiques d'affilée pour accepter un code. */
   lecturesRequises?: number;
   /** Écart maximal entre deux lectures successives du même code, en millisecondes. */
   fenetreMs?: number;
+  /** Silence au bout duquel une lecture valide isolée est acceptée (filet de sécurité). */
+  secoursMs?: number;
 };
 
 /**
@@ -48,10 +59,22 @@ export type OptionsConfirmateur = {
  *
  * Un code à clé fausse est ignoré SANS remettre le compte à zéro : c'est du bruit, pas un autre produit.
  */
-export function creerConfirmateur({ lecturesRequises = 2, fenetreMs = 1500 }: OptionsConfirmateur = {}) {
+export function creerConfirmateur({
+  lecturesRequises = 2,
+  fenetreMs = 1500,
+  secoursMs = DELAI_SECOURS_MS,
+}: OptionsConfirmateur = {}) {
   let codeCourant: string | null = null;
   let nombre = 0;
   let derniereLecture = 0;
+  let douteux = false; // un autre code valide a précédé celui-ci de peu : on ne sait pas lequel est le bon
+
+  const remiseAZero = () => {
+    codeCourant = null;
+    nombre = 0;
+    derniereLecture = 0;
+    douteux = false;
+  };
 
   return {
     /** `maintenant` = l'heure de la lecture en millisecondes (Date.now()). */
@@ -61,19 +84,30 @@ export function creerConfirmateur({ lecturesRequises = 2, fenetreMs = 1500 }: Op
       if (code === codeCourant && maintenant - derniereLecture <= fenetreMs) {
         nombre += 1;
       } else {
+        // Un autre code valide vu à l'instant : les deux se disputent l'image, la lecture est douteuse.
+        douteux = codeCourant !== null && code !== codeCourant && maintenant - derniereLecture <= fenetreMs;
         codeCourant = code; // nouveau code, ou même code mais trop espacé : on recompte depuis un
         nombre = 1;
       }
       derniereLecture = maintenant;
 
-      return nombre >= lecturesRequises ? 'confirme' : 'en_attente';
+      if (nombre >= lecturesRequises) return 'confirme';
+      return 'en_attente';
+    },
+
+    /**
+     * Filet de sécurité, à appeler `secoursMs` après une lecture en attente. Renvoie le code à accepter,
+     * ou null s'il faut continuer à attendre (une lecture plus récente est arrivée, ou la lecture est douteuse).
+     */
+    secours(maintenant: number): string | null {
+      if (codeCourant === null || douteux || nombre >= lecturesRequises) return null;
+      if (maintenant - derniereLecture < secoursMs) return null;
+      const code = codeCourant;
+      remiseAZero();
+      return code;
     },
 
     /** À appeler quand un nouveau scan démarre (retour sur l'écran, « Scanner à nouveau »). */
-    reinitialiser() {
-      codeCourant = null;
-      nombre = 0;
-      derniereLecture = 0;
-    },
+    reinitialiser: remiseAZero,
   };
 }

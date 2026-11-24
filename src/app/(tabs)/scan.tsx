@@ -21,7 +21,7 @@ import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { rechercherProduitParEAN } from '@/services/api';
 import { ecrireProduitCache } from '@/services/cache';
-import { creerConfirmateur } from '@/services/ean';
+import { creerConfirmateur, DELAI_SECOURS_MS } from '@/services/ean';
 
 const CLE_PERMISSION = 'camera_permission';
 const TEXTE_ATTENTE = 'Pointez la caméra vers un code-barre';
@@ -37,8 +37,16 @@ export default function ScanScreen() {
   const [texte, setTexte] = useState(TEXTE_ATTENTE);
   const [lampe, setLampe] = useState(false); // lampe de poche allumée ?
   const enTraitement = useRef(false);
-  // Contrôle des lectures de la caméra : clé de l'EAN valide + même code lu deux fois d'affilée.
+  // Contrôle des lectures de la caméra : clé de l'EAN valide + même code lu deux fois d'affilée
+  // (+ filet de sécurité si la caméra ne relit jamais le même code, voir services/ean.ts).
   const confirmateur = useRef(creerConfirmateur()).current;
+  const minuterie = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const annulerMinuterie = () => {
+    if (minuterie.current) clearTimeout(minuterie.current);
+    minuterie.current = null;
+  };
+  // Quitter l'écran : plus aucune acceptation différée.
+  useEffect(() => annulerMinuterie, []);
 
   // Fond noir : icônes de la barre d'état en clair tant que le scanner est affiché.
   useEffect(() => {
@@ -70,6 +78,7 @@ export default function ScanScreen() {
     if (!enFocus || !permission) return;
     // On repart d'un état propre à chaque arrivée sur l'écran.
     enTraitement.current = false;
+    annulerMinuterie();
     confirmateur.reinitialiser();
     setTexte(TEXTE_ATTENTE);
 
@@ -120,14 +129,32 @@ export default function ScanScreen() {
   }, [enFocus, permission?.granted, permission === null]);
 
   // --- Un code-barres est lu ---
-  const surCodeLu = async (resultat: BarcodeScanningResult) => {
+  // La caméra appelle cette fonction à chaque lecture. Le code n'est accepté qu'après contrôle ;
+  // en attendant, la caméra continue et l'utilisateur ne voit rien (une fraction de seconde).
+  const surCodeLu = (resultat: BarcodeScanningResult) => {
     if (enTraitement.current) return;
     const code = resultat.data;
 
-    // Lecture écartée (clé fausse) ou en attente d'une seconde lecture identique : la caméra continue,
-    // l'utilisateur ne voit rien (la confirmation prend une fraction de seconde).
-    if (confirmateur.lire(code, Date.now()) !== 'confirme') return;
+    const verdict = confirmateur.lire(code, Date.now());
+    if (verdict === 'confirme') {
+      accepterCode(code);
+    } else if (verdict === 'en_attente') {
+      // Filet de sécurité : si plus rien n'est lu pendant un court silence, ce code unique est accepté.
+      annulerMinuterie();
+      minuterie.current = setTimeout(() => {
+        minuterie.current = null;
+        const secours = confirmateur.secours(Date.now());
+        if (secours) accepterCode(secours);
+      }, DELAI_SECOURS_MS + 50);
+    }
+    // verdict « rejete » : clé de contrôle fausse, lecture ignorée.
+  };
+
+  // --- Un code est accepté : on cherche le produit ---
+  const accepterCode = async (code: string) => {
+    if (enTraitement.current) return;
     enTraitement.current = true;
+    annulerMinuterie();
 
     setTexte('Code-barre détecté !');
     Vibration.vibrate(100);
