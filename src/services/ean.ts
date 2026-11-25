@@ -22,9 +22,13 @@
  * Ce fichier ne dépend ni de React ni de la caméra : il se teste seul, avec Node.
  */
 
-/** Vrai si `code` est un EAN-8 ou un EAN-13 dont le dernier chiffre (la clé) est correct. */
+/**
+ * Vrai si `code` est un code-barres dont le dernier chiffre (la clé) est correct : EAN-8, UPC-A (12 chiffres,
+ * fréquent quand on recopie à la main le numéro d'un produit américain), EAN-13 ou GTIN-14.
+ * Même calcul que la base (fonction SQL prive.cle_ean_valide).
+ */
 export function cleEanValide(code: string): boolean {
-  if (!/^(\d{8}|\d{13})$/.test(code)) return false;
+  if (!/^(\d{8}|\d{12,14})$/.test(code)) return false;
 
   const chiffres = code.split('').map(Number);
   const cle = chiffres.pop() as number; // le dernier chiffre est la clé : on le met de côté

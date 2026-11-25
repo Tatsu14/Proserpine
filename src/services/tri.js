@@ -241,7 +241,7 @@ function analyserDepuisTags(donneesBrutes) {
     return composants;
 }
 
-function genererInstructions(composants) {
+export function genererInstructions(composants) {
     if (composants.length === 0) return null;
 
     if (composants.length === 1) {

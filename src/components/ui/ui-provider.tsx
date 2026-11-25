@@ -30,6 +30,9 @@ type Dialogue = {
   danger?: boolean;
   onConfirmer?: () => void;
   onAnnuler?: () => void;
+  /** Troisième bouton, facultatif (ex. « Proposer ce produit »). */
+  autre?: string;
+  onAutre?: () => void;
 };
 
 type Ui = {
@@ -100,6 +103,16 @@ function DialogueVue({ d, fermer }: { d: Dialogue; fermer: () => void }) {
               }}
             >
               {d.annuler}
+            </BoutonSecondaire>
+          ) : null}
+          {d.autre ? (
+            <BoutonSecondaire
+              onPress={() => {
+                fermer();
+                d.onAutre?.();
+              }}
+            >
+              {d.autre}
             </BoutonSecondaire>
           ) : null}
         </View>

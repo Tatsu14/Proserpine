@@ -21,6 +21,7 @@ import {
   BACS,
   envoyerSignalementConsigne,
   LONGUEUR_MAX_COMMENTAIRE_CONSIGNE,
+  LONGUEUR_MAX_DETAIL_CONSIGNE,
   ORIGINES_CONSIGNE,
   verifierConsigne,
   type Bac,
@@ -50,6 +51,7 @@ export default function SignalerConsigneScreen() {
     bacs?: string; // ex. « pmc,paper »
     detail?: string; // ex. « Bouteille, Bouchon »
     origine?: string;
+    base?: string; // « 1 » : la consigne contestée vient de la base de Proserpine (vérifiée)
   }>();
 
   const ean = lireParam(params.ean);
@@ -60,12 +62,16 @@ export default function SignalerConsigneScreen() {
     .filter((b): b is Bac => BACS.some((x) => x.id === b));
   const origineParam = lireParam(params.origine) as OrigineConsigne;
   const origine: OrigineConsigne = ORIGINES_CONSIGNE.includes(origineParam) ? origineParam : 'lu';
+  // Consigne de la base de Proserpine : les règles Firestore n'acceptent que « lu / déduit / choisi »,
+  // on l'enregistre donc comme « lu » avec le repère [Base Proserpine] en tête du détail.
+  const deLaBase = lireParam(params.base) === '1';
+  const detailEnvoye = deLaBase ? `[Base Proserpine] ${detail}`.slice(0, LONGUEUR_MAX_DETAIL_CONSIGNE) : detail;
 
   const [triSuggere, setTriSuggere] = useState<Bac[]>([]);
   const [commentaire, setCommentaire] = useState('');
   const [envoi, setEnvoi] = useState(false);
 
-  const saisie: SaisieConsigne = { ean, nom, triAffiche, detailAffiche: detail, origine, triSuggere, commentaire };
+  const saisie: SaisieConsigne = { ean, nom, triAffiche, detailAffiche: detailEnvoye, origine, triSuggere, commentaire };
   const pret = verifierConsigne(saisie) === null && !envoi;
 
   async function envoyer() {
@@ -103,7 +109,7 @@ export default function SignalerConsigneScreen() {
             Consigne affichée : {triAffiche.map(titreBac).join(', ') || '—'}
             {detail ? ` (${detail})` : ''}
           </Text>
-          <Text style={styles.recapMeta}>Origine : {LIBELLE_ORIGINE[origine]}</Text>
+          <Text style={styles.recapMeta}>Origine : {deLaBase ? 'Vérifiée par Proserpine' : LIBELLE_ORIGINE[origine]}</Text>
         </View>
 
         <ChoixPucesMultiples

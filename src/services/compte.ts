@@ -16,6 +16,7 @@ import {
 import { collection, deleteDoc, doc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
+import { appelerApi } from './api-proserpine';
 import { auth, db, googleProvider } from './firebase';
 
 export type ResultatCompte = { success: boolean; error?: string; nom?: string };
@@ -127,7 +128,18 @@ export async function supprimerCompte(motDePasse: string | null = null): Promise
     return { success: false, error: messageErreurCompte(e?.code) };
   }
 
-  // --- 2 et 3. Effacement des données puis du compte ---
+  // --- 2. Propositions de produits : on efface l'identifiant du compte (les propositions restent, anonymes).
+  // Promesse de la politique de confidentialité : si cette étape échoue (réseau), on n'efface rien et
+  // l'utilisateur recommence ; sinon l'identifiant resterait dans la base jusqu'à la purge des 12 mois.
+  const purge = await appelerApi('effacer_identifiant', {}, 10_000);
+  if (!purge.ok) {
+    return {
+      success: false,
+      error: "La suppression n'a pas pu commencer. Vérifiez votre connexion puis recommencez.",
+    };
+  }
+
+  // --- 3 et 4. Effacement des données puis du compte ---
   try {
     const instantane = await getDocs(collection(db, 'utilisateurs', user.uid, 'historique'));
     let lot = writeBatch(db);

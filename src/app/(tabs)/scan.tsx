@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUi } from '@/components/ui/ui-provider';
 import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
-import { rechercherProduitParEAN } from '@/services/api';
+import { chercherProduit } from '@/services/base-produits';
 import { ecrireProduitCache } from '@/services/cache';
 import { creerConfirmateur, DELAI_SECOURS_MS } from '@/services/ean';
 
@@ -209,7 +209,8 @@ export default function ScanScreen() {
     setLampe(false);
     ui.chargement('Recherche du produit...');
 
-    const produit = await rechercherProduitParEAN(code);
+    // Base de Proserpine + Open Food Facts en parallèle (la consigne de la base est prioritaire).
+    const produit = await chercherProduit(code);
     ui.chargement(null);
 
     if (produit) {
@@ -219,9 +220,12 @@ export default function ScanScreen() {
     } else {
       ui.confirmer({
         titre: 'Produit non trouvé',
-        message: "Ce produit n'est pas encore référencé dans notre base de données.",
+        message:
+          "Ce produit n'est pas encore référencé dans notre base de données. Vous pouvez nous le proposer : nous le vérifierons avant de l'ajouter.",
         confirmer: 'Scanner à nouveau',
         annuler: 'Rechercher manuellement',
+        autre: 'Proposer ce produit',
+        onAutre: () => router.replace({ pathname: '/proposer', params: { ean: code } }),
         onConfirmer: () => {
           enTraitement.current = false;
           confirmateur.reinitialiser();
