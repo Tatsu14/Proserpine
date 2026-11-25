@@ -16,13 +16,18 @@ import { creerGestionnaire } from './gestionnaire.ts';
 const PROJET_FIREBASE = 'proserpine-5eadf';
 
 /**
- * Administrateurs : UID Firebase (pas un secret, il figure déjà dans src/constants/admin.ts).
- * Pour en ajouter un sans redéployer : variable UIDS_ADMIN (liste séparée par des virgules).
+ * Administrateurs : UID Firebase (pas des secrets).
+ *  - L4xc… : compte administrateur de l'app (src/constants/admin.ts) ;
+ *  - KINp… : compte du site d'administration (créé le 25/11/2026).
+ * Pour en ajouter un sans redéployer : variable UIDS_ADMIN (liste séparée par des virgules), qui s'AJOUTE à ceux-ci.
  */
-const UIDS_ADMIN = (Deno.env.get('UIDS_ADMIN') ?? 'L4xcWYA4NGTpt4QMCp134SGmQA82')
-  .split(',')
-  .map((s) => s.trim())
-  .filter(Boolean);
+const UIDS_ADMIN = [
+  ...new Set(
+    ['L4xcWYA4NGTpt4QMCp134SGmQA82', 'KINp4lC0lMRlQdJOpjC1VpTct8j1', ...(Deno.env.get('UIDS_ADMIN') ?? '').split(',')]
+      .map((s) => s.trim())
+      .filter(Boolean),
+  ),
+];
 
 function cleServeur(): string {
   const nouvelles = Deno.env.get('SUPABASE_SECRET_KEYS');
