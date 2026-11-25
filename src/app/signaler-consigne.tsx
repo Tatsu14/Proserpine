@@ -1,135 +1,247 @@
 /**
- * SIGNALER UNE CONSIGNE FAUSSE — ouvert depuis la fiche produit (lien sous « Où le jeter ? »).
+ * SIGNALER UNE CONSIGNE FAUSSE — élément par élément (option A validée le 25/11/2026).
  *
- * Le produit, la consigne affichée et son origine arrivent par les paramètres de la route :
- * l'utilisateur n'a rien à retaper. Il peut proposer le(s) bon(s) bac(s) et ajouter un commentaire
- * (tout est facultatif). Le signalement part dans Firestore sans donnée personnelle
- * (voir services/retours.ts) et apparaît dans l'écran Administration.
+ * Chaque élément affiché sur la fiche apparaît avec son bac : l'utilisateur laisse « C'est juste » ou choisit
+ * le bon bac (ou « Je ne sais pas »). Il peut ajouter un élément manquant et un commentaire.
+ * Un signalement sans aucune correction ni commentaire n'est pas envoyé : un message dit ce qu'il manque.
+ * Envoi par la fonction serveur (services/signalements.ts).
  */
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { RappelProduit, stylesSignalement, useProduitSignale } from '@/components/signalement/commun';
 import { BoutonPrimaire } from '@/components/ui/boutons';
 import { Champ } from '@/components/ui/champ';
-import { ChoixPucesMultiples } from '@/components/ui/choix-retour';
+import { ChoixPuces } from '@/components/ui/choix-retour';
 import { EnteteEcran } from '@/components/ui/menu';
 import { Text } from '@/components/ui/texte';
 import { useUi } from '@/components/ui/ui-provider';
+import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
+import { messageErreur } from '@/services/api-proserpine';
+import { majuscule } from '@/services/base-produits';
 import {
-  BACS,
+  BACS_SIGNALEMENT,
+  codePostalValide,
   envoyerSignalementConsigne,
-  LONGUEUR_MAX_COMMENTAIRE_CONSIGNE,
-  ORIGINES_CONSIGNE,
-  verifierConsigne,
-  type Bac,
-  type OrigineConsigne,
-  type SaisieConsigne,
-} from '@/services/retours';
+  lireCodePostalMemorise,
+  memoriserCodePostal,
+  libelleBacSignalement,
+  LONGUEUR_MAX_TEXTE,
+  MAX_ELEMENTS,
+  type BacSignalement,
+  type ElementSignale,
+} from '@/services/signalements';
 
-const LIBELLE_ORIGINE: Record<OrigineConsigne, string> = {
-  lu: 'Lue sur l’emballage',
-  deduit: 'Déduite de la catégorie',
-  choisi: 'Votre choix',
+type Choix = 'ok' | 'inconnu' | BacSignalement;
+type Ajout = { cle: number; nom: string; bac: 'inconnu' | BacSignalement };
+
+const COULEUR_BAC: Record<BacSignalement, string> = {
+  pmc: couleurs.bacPmc,
+  paper: couleurs.bacPapier,
+  glass: couleurs.bacVerre,
+  organic: couleurs.bacOrganique,
+  residual: couleurs.bacResiduel,
+  danger: couleurs.bacDanger,
 };
 
-const titreBac = (id: string) => BACS.find((b) => b.id === id)?.libelle ?? id;
-
-/** Lit un paramètre de route (texte) sans jamais planter sur une valeur inattendue. */
-function lireParam(valeur: string | string[] | undefined): string {
-  return Array.isArray(valeur) ? (valeur[0] ?? '') : (valeur ?? '');
-}
+const OPTIONS_AJOUT = [...BACS_SIGNALEMENT, { id: 'inconnu', libelle: 'Je ne sais pas' }] as const;
 
 export default function SignalerConsigneScreen() {
   const router = useRouter();
   const ui = useUi();
-  const params = useLocalSearchParams<{
-    ean?: string;
-    nom?: string;
-    bacs?: string; // ex. « pmc,paper »
-    detail?: string; // ex. « Bouteille, Bouchon »
-    origine?: string;
-  }>();
+  const produit = useProduitSignale();
 
-  const ean = lireParam(params.ean);
-  const nom = lireParam(params.nom);
-  const detail = lireParam(params.detail);
-  const triAffiche = lireParam(params.bacs)
-    .split(',')
-    .filter((b): b is Bac => BACS.some((x) => x.id === b));
-  const origineParam = lireParam(params.origine) as OrigineConsigne;
-  const origine: OrigineConsigne = ORIGINES_CONSIGNE.includes(origineParam) ? origineParam : 'lu';
-
-  const [triSuggere, setTriSuggere] = useState<Bac[]>([]);
+  const [choix, setChoix] = useState<Choix[]>(() => produit.elements.map(() => 'ok'));
+  const [ajouts, setAjouts] = useState<Ajout[]>([]);
   const [commentaire, setCommentaire] = useState('');
+  const [codePostal, setCodePostal] = useState('');
+  const [codePostalTouche, setCodePostalTouche] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
 
-  const saisie: SaisieConsigne = { ean, nom, triAffiche, detailAffiche: detail, origine, triSuggere, commentaire };
-  const pret = verifierConsigne(saisie) === null && !envoi;
+  // Le message d'erreur disparaît dès que l'utilisateur modifie son signalement.
+  useEffect(() => setErreur(null), [choix, ajouts, commentaire, codePostal]);
+
+  // Code postal déjà donné lors d'un signalement précédent : pré-rempli (il reste modifiable).
+  useEffect(() => {
+    lireCodePostalMemorise().then((cp) => {
+      if (cp) setCodePostal((actuel) => actuel || cp);
+    });
+  }, []);
+  const prochaineCle = useRef(1);
+
+  const peutAjouter = produit.elements.length + ajouts.length < MAX_ELEMENTS;
 
   async function envoyer() {
-    if (!pret) return;
+    setErreur(null);
+    if (ajouts.some((a) => a.nom.trim() === '')) {
+      setErreur('Donnez un nom à l’élément ajouté, ou retirez-le.');
+      return;
+    }
+    const elements: ElementSignale[] = [
+      ...produit.elements.flatMap((e, i): ElementSignale[] =>
+        choix[i] === 'ok'
+          ? []
+          : [{ nom: e.nom, bac_affiche: e.bac, bac_propose: choix[i] === 'inconnu' ? null : (choix[i] as BacSignalement), ajoute: false }],
+      ),
+      ...ajouts.map((a): ElementSignale => ({
+        nom: majuscule(a.nom).slice(0, 100),
+        bac_affiche: null,
+        bac_propose: a.bac === 'inconnu' ? null : a.bac,
+        ajoute: true,
+      })),
+    ];
+    if (elements.length === 0 && commentaire.trim() === '') {
+      setErreur(
+        produit.elements.length > 0
+          ? 'Votre signalement est vide : choisissez le bon bac pour au moins un élément, ajoutez un élément manquant ou écrivez un commentaire.'
+          : 'Votre signalement est vide : ajoutez un élément manquant ou écrivez un commentaire.',
+      );
+      return;
+    }
+    if (!codePostalValide(codePostal)) {
+      setCodePostalTouche(true);
+      setErreur('Indiquez votre code postal (4 chiffres) : les règles de tri changent d’une commune à l’autre.');
+      return;
+    }
     setEnvoi(true);
-    const resultat = await envoyerSignalementConsigne(saisie);
+    const r = await envoyerSignalementConsigne({
+      ean: produit.ean,
+      nomProduit: produit.nom,
+      origine: produit.origine,
+      elements,
+      commentaire,
+      codePostal,
+    });
     setEnvoi(false);
-    if (resultat.success) {
-      ui.toast('Merci, votre signalement a bien été envoyé.', 'success');
-      router.back();
+    if (r.ok) {
+      memoriserCodePostal(codePostal);
+      ui.informer({
+        titre: 'Merci pour votre signalement',
+        message: 'Nous allons le vérifier et corriger la consigne si besoin.',
+        bouton: 'Retour à la fiche',
+        onFermer: () => (produit.ean ? router.dismissTo(`/produit/${produit.ean}`) : router.back()),
+      });
     } else {
-      ui.toast(resultat.error ?? "L'envoi a échoué.", 'error');
+      setErreur(messageErreur(r.erreur));
     }
   }
 
   return (
-    <View style={styles.page}>
+    <View style={stylesSignalement.page}>
       <Stack.Screen options={{ headerShown: false }} />
       <EnteteEcran titre="Consigne fausse ?" />
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.contenu}
-      >
-        <Text style={styles.intro}>
-          Cette consigne de tri ne correspond pas à ce que vous savez ? Dites-le-nous : nous la vérifierons.
+      <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={stylesSignalement.contenu}>
+        <RappelProduit produit={produit} />
+        <Text style={stylesSignalement.intro}>
+          {produit.elements.length > 0
+            ? 'Pour chaque élément, indiquez le bon bac si celui affiché est faux. Laissez « C’est juste » pour ceux qui sont corrects.'
+            : 'Aucun élément n’est affiché pour ce produit. Ajoutez ceux que vous connaissez, avec leur bac.'}
         </Text>
 
-        {/* Rappel de ce qui est contesté */}
-        <View style={styles.recap}>
-          <Text style={styles.recapProduit}>{nom || 'Produit'}</Text>
-          <Text style={styles.recapMeta}>Code-barres : {ean || '—'}</Text>
-          <Text style={styles.recapMeta}>
-            Consigne affichée : {triAffiche.map(titreBac).join(', ') || '—'}
-            {detail ? ` (${detail})` : ''}
-          </Text>
-          <Text style={styles.recapMeta}>Origine : {LIBELLE_ORIGINE[origine]}</Text>
-        </View>
+        {produit.elements.map((e, i) => (
+          <View key={`${e.nom}-${i}`} style={styles.element}>
+            <View style={styles.elementHaut}>
+              <View style={[styles.carre, { backgroundColor: COULEUR_BAC[e.bac] }]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.elementNom}>{e.nom}</Text>
+                <Text style={styles.elementMeta}>Affiché : {libelleBacSignalement(e.bac)}</Text>
+              </View>
+            </View>
+            <ChoixPuces
+              etiquette="Bon bac"
+              options={[
+                { id: 'ok', libelle: 'C’est juste' },
+                ...BACS_SIGNALEMENT.filter((b) => b.id !== e.bac),
+                { id: 'inconnu', libelle: 'Je ne sais pas' },
+              ]}
+              valeur={choix[i]}
+              onChange={(c) => setChoix((cs) => cs.map((x, j) => (j === i ? (c as Choix) : x)))}
+            />
+          </View>
+        ))}
 
-        <ChoixPucesMultiples
-          etiquette="Où faut-il le jeter ? (facultatif)"
-          options={BACS}
-          valeur={triSuggere}
-          onChange={setTriSuggere}
+        {ajouts.map((a, i) => (
+          <View key={a.cle} style={styles.element}>
+            <View style={styles.elementHaut}>
+              <Text style={[styles.elementNom, { flex: 1 }]}>Élément manquant {ajouts.length > 1 ? i + 1 : ''}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Retirer cet élément"
+                onPress={() => setAjouts((as) => as.filter((x) => x.cle !== a.cle))}
+                style={styles.retirer}
+              >
+                <Icone nom="delete_outline" taille={22} couleur={couleurs.statutDanger} />
+                <Text style={styles.retirerTexte}>Retirer</Text>
+              </Pressable>
+            </View>
+            <Champ
+              etiquette="Élément"
+              value={a.nom}
+              onChangeText={(v) => setAjouts((as) => as.map((x) => (x.cle === a.cle ? { ...x, nom: v } : x)))}
+              maxLength={100}
+              placeholder="Ex. : opercule en aluminium"
+            />
+            <ChoixPuces
+              etiquette="Bac"
+              options={OPTIONS_AJOUT}
+              valeur={a.bac}
+              onChange={(b) => setAjouts((as) => as.map((x) => (x.cle === a.cle ? { ...x, bac: b } : x)))}
+            />
+          </View>
+        ))}
+
+        {peutAjouter ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setAjouts((as) => [...as, { cle: prochaineCle.current++, nom: '', bac: 'inconnu' }])}
+            style={({ pressed }) => [styles.ajout, pressed && { opacity: 0.7 }]}
+          >
+            <Icone nom="add" taille={20} couleur={couleurs.texteAttenue} />
+            <Text style={styles.ajoutTexte}>Il manque un élément</Text>
+          </Pressable>
+        ) : null}
+
+        <Champ
+          etiquette="Votre code postal"
+          value={codePostal}
+          onChangeText={(v) => setCodePostal(v.replace(/\D/g, '').slice(0, 4))}
+          onBlur={() => setCodePostalTouche(true)}
+          keyboardType="number-pad"
+          maxLength={4}
+          invalide={codePostalTouche && !codePostalValide(codePostal)}
+          erreur="4 chiffres, par exemple 4430."
+          placeholder="Ex. : 4430"
         />
+        <Text style={styles.aideCodePostal}>
+          Les règles de tri changent d’une commune à l’autre : votre code postal nous aide à vérifier la bonne
+          consigne. Il est gardé sur votre téléphone pour vos prochains signalements.
+        </Text>
 
         <Champ
           etiquette="Commentaire (facultatif)"
           multiligne
           value={commentaire}
           onChangeText={setCommentaire}
-          maxLength={LONGUEUR_MAX_COMMENTAIRE_CONSIGNE}
-          placeholder="Ex. : le bouchon va au PMC, pas aux résiduels."
+          maxLength={LONGUEUR_MAX_TEXTE}
+          placeholder="Ex. : la boîte est en carton, elle va aux papiers."
         />
-        <Text style={styles.compteur}>
-          {commentaire.length} / {LONGUEUR_MAX_COMMENTAIRE_CONSIGNE}
+        <Text style={stylesSignalement.compteur}>
+          {commentaire.length} / {LONGUEUR_MAX_TEXTE}
         </Text>
 
-        <Text style={styles.confidentialite}>
-          Aucune information personnelle n'est envoyée : seulement le code du produit, la consigne affichée et votre
-          proposition.
+        {erreur ? (
+          <Text style={stylesSignalement.erreur} accessibilityRole="alert">
+            {erreur}
+          </Text>
+        ) : null}
+        <Text style={stylesSignalement.confidentialite}>
+          Votre signalement est lié à votre compte par un identifiant technique (ni nom ni e-mail), effacé 12 mois après
+          son traitement, ou dès la suppression de votre compte.
         </Text>
-        <BoutonPrimaire onPress={envoyer} disabled={!pret}>
+        <BoutonPrimaire onPress={envoyer} disabled={envoi}>
           {envoi ? 'Envoi…' : 'Envoyer le signalement'}
         </BoutonPrimaire>
       </ScrollView>
@@ -138,27 +250,32 @@ export default function SignalerConsigneScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: couleurs.fondCarte },
-  contenu: { paddingHorizontal: 16, paddingBottom: 32 },
-  intro: { fontFamily: police.normal, fontSize: tailleTexte.md, color: couleurs.texteAttenue, marginBottom: 16 },
-  recap: {
-    gap: 4,
-    padding: 16,
-    marginBottom: 16,
-    backgroundColor: couleurs.fondGris,
+  element: {
+    padding: 12,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: couleurs.bordure,
     borderRadius: rayon.md,
+    backgroundColor: couleurs.fondGris,
   },
-  recapProduit: { fontFamily: police.extraGras, fontSize: tailleTexte.md, color: couleurs.texte },
-  recapMeta: { fontFamily: police.normal, fontSize: tailleTexte.sm, color: couleurs.texteAttenue },
-  compteur: {
-    fontFamily: police.normal,
-    fontSize: tailleTexte.xs,
-    color: couleurs.texteAttenue,
-    textAlign: 'right',
-    marginTop: -12,
-    marginBottom: 16,
+  elementHaut: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  carre: { width: 12, height: 12, borderRadius: 3 },
+  elementNom: { fontFamily: police.extraGras, fontSize: tailleTexte.md, color: couleurs.texte },
+  elementMeta: { fontFamily: police.normal, fontSize: tailleTexte.sm, color: couleurs.texteAttenue },
+  retirer: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44, paddingHorizontal: 8 },
+  retirerTexte: { fontFamily: police.semiGras, fontSize: tailleTexte.sm, color: couleurs.statutDanger },
+  ajout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 48,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: couleurs.fondPointille,
+    borderRadius: rayon.md,
   },
-  confidentialite: { fontFamily: police.normal, fontSize: tailleTexte.sm, color: couleurs.texteAttenue, marginBottom: 12 },
+  aideCodePostal: { fontFamily: police.normal, fontSize: tailleTexte.sm, color: couleurs.texteAttenue, marginTop: -8, marginBottom: 16 },
+  ajoutTexte: { fontFamily: police.gras, fontSize: tailleTexte.md, color: couleurs.texteAttenue },
 });

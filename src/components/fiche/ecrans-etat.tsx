@@ -12,15 +12,18 @@ import { BoutonRetour } from '@/components/fiche/blocs-info';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { Icone } from '@/design/icones';
 
-/** Écran « Produit introuvable » avec deux actions claires. */
+/** Écran « Produit introuvable » avec des actions claires (et la proposition du produit, si fournie). */
 export function EcranIntrouvable({
   onRetour,
   onReessayer,
   onChercher,
+  onProposer,
 }: {
   onRetour: () => void;
   onReessayer: () => void;
   onChercher: () => void;
+  /** « Proposer ce produit » : l'utilisateur l'envoie à l'équipe, qui le vérifie avant de l'ajouter. */
+  onProposer?: () => void;
 }) {
   const marges = useSafeAreaInsets();
   return (
@@ -47,6 +50,12 @@ export function EcranIntrouvable({
         <Icone nom="search" taille={22} couleur={couleurs.texte} />
         <Text style={[styles.boutonTexte, { color: couleurs.texte }]}>Chercher par nom</Text>
       </Pressable>
+      {onProposer ? (
+        <Pressable accessibilityRole="button" onPress={onProposer} style={[styles.bouton, styles.boutonGris]}>
+          <Icone nom="add_circle" taille={22} couleur={couleurs.texte} />
+          <Text style={[styles.boutonTexte, { color: couleurs.texte }]}>Proposer ce produit</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

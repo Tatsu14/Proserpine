@@ -47,15 +47,17 @@ export type Bac = { categorie: string; elements: string[] };
 
 /**
  * Origine de la consigne :
+ *  - 'verifie' : consigne de la base de Proserpine, vérifiée par l'équipe (prioritaire sur le reste)
  *  - 'lu'     : lue sur l'emballage (donnée d'Open Food Facts)
  *  - 'deduit' : déduite de la catégorie du produit (à vérifier)
  *  - 'choisi' : la matière a été choisie par l'utilisateur lui-même
  *  - 'aucune' : on ne sait pas
  */
-export type Fiabilite = 'lu' | 'deduit' | 'choisi' | 'aucune';
+export type Fiabilite = 'verifie' | 'lu' | 'deduit' | 'choisi' | 'aucune';
 
 // Apparence de l'étiquette selon l'origine (icône, texte, fond, couleur du texte).
 const ETIQUETTES: Record<Exclude<Fiabilite, 'aucune'>, { icone: string; texte: string; fond: string; couleur: string }> = {
+  verifie: { icone: 'verified', texte: 'Vérifié par Proserpine', fond: couleurs.statutBonFond, couleur: '#00663A' },
   lu: { icone: 'check_circle', texte: 'Lu sur l’emballage', fond: couleurs.statutBonFond, couleur: '#00663A' },
   deduit: { icone: 'info', texte: 'Déduit · à vérifier', fond: couleurs.statutAttentionFond, couleur: '#8A5300' },
   choisi: { icone: 'touch_app', texte: 'Votre choix', fond: couleurs.bordure, couleur: couleurs.texteAttenue },
@@ -105,6 +107,16 @@ export function CarteBac({ bac, onPress }: { bac: Bac; onPress?: () => void }) {
 }
 
 /** Section « Où le jeter ? » : titre, étiquette de fiabilité, puis les cartes de bac. */
+/** Lien « Une erreur ? Signaler » : consigne de tri ou informations du produit (écran /signaler). */
+export function LienSignaler({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.lienSignaler}>
+      <Icone nom="report_problem" taille={18} couleur={couleurs.texteAttenue} />
+      <Text style={styles.lienSignalerTexte}>Une erreur ? Signaler</Text>
+    </Pressable>
+  );
+}
+
 export function SectionTri({
   bacs,
   fiabilite,
@@ -125,7 +137,7 @@ export function SectionTri({
   explication?: string | null;
   /** Si fourni, affiche « Changer de matière » (cas où la matière a été choisie par l'utilisateur). */
   onChanger?: () => void;
-  /** Si fourni, affiche le lien « Cette consigne est fausse ? Signaler » sous la section. */
+  /** Si fourni, affiche le lien « Une erreur ? Signaler » sous la section. */
   onSignaler?: () => void;
   onOuvrirGuide: (categorie: string) => void;
 }) {
@@ -178,12 +190,7 @@ export function SectionTri({
         </View>
       ) : null}
 
-      {onSignaler ? (
-        <Pressable accessibilityRole="button" onPress={onSignaler} style={styles.lienSignaler}>
-          <Icone nom="report_problem" taille={18} couleur={couleurs.texteAttenue} />
-          <Text style={styles.lienSignalerTexte}>Cette consigne est fausse ? Signaler</Text>
-        </Pressable>
-      ) : null}
+      {onSignaler ? <LienSignaler onPress={onSignaler} /> : null}
     </View>
   );
 }

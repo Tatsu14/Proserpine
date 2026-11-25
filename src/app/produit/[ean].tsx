@@ -33,12 +33,12 @@ import { BandeauHorsLigne, BlocIndice, BoiteConseil, EnteteFiche, Source } from 
 import { ChoixMatiere } from '@/components/fiche/choix-matiere';
 import { EcranChargement, EcranIntrouvable } from '@/components/fiche/ecrans-etat';
 import { FeuilleIndice } from '@/components/fiche/feuille-indice';
-import { SectionTri, type Bac, type Fiabilite } from '@/components/fiche/blocs-tri';
+import { LienSignaler, SectionTri, type Bac, type Fiabilite } from '@/components/fiche/blocs-tri';
 import { scoreColor } from '@/constants/colors';
 import { useAuth } from '@/contexts/auth';
 import { useReglages } from '@/contexts/reglages';
 import { couleurs } from '@/design/tokens';
-import { rechercherProduitParEAN } from '@/services/api';
+import { chercherProduit, triDepuisBase } from '@/services/base-produits';
 import { ecrireProduitCache, lireProduitCache } from '@/services/cache';
 import { calculerEcoScore } from '@/services/ecoscore';
 import { enregistrerScan } from '@/services/historique';
@@ -52,6 +52,7 @@ type Statut = 'chargement' | 'introuvable' | 'ok';
 
 // Nom lisible de la base d'où viennent les données.
 const NOMS_SOURCES: Record<string, string> = {
+  proserpine: 'Proserpine',
   openfoodfacts: 'Open Food Facts',
   openbeautyfacts: 'Open Beauty Facts',
   openproductsfacts: 'Open Products Facts',
@@ -104,7 +105,8 @@ export default function ProduitScreen() {
     // Calcule score + tri et affiche le produit. Renvoie le score (pour l'historique).
     const appliquer = (p: any) => {
       const s: any = calculerEcoScore(p.donnees_brutes);
-      const t: any = analyserEmballage(p.donnees_brutes);
+      // Une consigne de la base de Proserpine (vérifiée) passe avant le calcul fait à partir d'Open Food Facts.
+      const t: any = triDepuisBase(p.consigneBase) ?? analyserEmballage(p.donnees_brutes);
       setProduit(p);
       setScore(s);
       setTri(t);
@@ -126,8 +128,8 @@ export default function ProduitScreen() {
         setStatut('chargement');
       }
 
-      // 2. Revalidation réseau (résiliente : timeout + retry côté api.js).
-      const frais: any = await rechercherProduitParEAN(code);
+      // 2. Revalidation réseau : base de Proserpine + Open Food Facts en parallèle (base-produits.ts).
+      const frais: any = await chercherProduit(code);
       if (!actif) return;
 
       if (frais) {
@@ -183,6 +185,7 @@ export default function ProduitScreen() {
           onRetour={retour}
           onReessayer={reessayer}
           onChercher={() => router.push('/(tabs)/recherche')}
+          onProposer={() => router.push({ pathname: '/proposer', params: { ean: String(ean) } })}
         />
       </>
     );
@@ -191,9 +194,10 @@ export default function ProduitScreen() {
   // ----- Données de la fiche -----
   const bacsConnus = grouperParBac(tri.composants ?? []);
 
-  // D'où vient la consigne ? Lue sur l'emballage, déduite de la catégorie, ou absente.
-  // Jamais de consigne déduite présentée comme un fait.
-  const fiabiliteConnue: Fiabilite = tri.deduit ? 'deduit' : bacsConnus.length > 0 ? 'lu' : 'aucune';
+  // D'où vient la consigne ? Vérifiée dans la base de Proserpine, lue sur l'emballage, déduite de la
+  // catégorie, ou absente. Jamais de consigne déduite présentée comme un fait.
+  const fiabiliteConnue: Fiabilite =
+    tri.source === 'base' ? 'verifie' : tri.deduit ? 'deduit' : bacsConnus.length > 0 ? 'lu' : 'aucune';
 
   // Quand l'application ne sait rien, l'utilisateur peut choisir la matière lui-même.
   // La consigne obtenue est alors étiquetée « Votre choix ».
@@ -207,24 +211,32 @@ export default function ProduitScreen() {
   // Emballage impossible à déterminer : tri.js fournit alors un texte honnête.
   const indetermine = tri.indetermine ? tri.instructions : null;
   // Message précis « Retirez… » : uniquement pour une consigne lue ou déduite, jamais pour un choix.
-  const separation = fiabilite === 'lu' || fiabilite === 'deduit' ? messageSeparation(bacs) : null;
+  const separation = fiabilite === 'verifie' || fiabilite === 'lu' || fiabilite === 'deduit' ? messageSeparation(bacs) : null;
   // Conseil de tri : général pour plusieurs bacs, propre au bac s'il n'y en a qu'un,
   // et aucun pour le Recyparc seul ou en l'absence de consigne (textes provisoires).
   const conseil = fiabilite !== 'aucune' ? conseilPour(bacs) : null;
 
-  // Signalement d'une consigne fausse : on transmet le produit, le tri affiché et son origine
-  // (l'utilisateur ne retape rien). Pas de lien quand aucune consigne n'est affichée.
+  // Signaler une erreur (consigne ou informations du produit) : on transmet le produit et chaque élément affiché
+  // avec son bac (l'utilisateur ne retape rien). Le lien est aussi proposé quand aucune consigne n'est affichée :
+  // on peut alors signaler un élément manquant ou une erreur sur le produit.
   const signaler = () =>
     router.push({
-      pathname: '/signaler-consigne',
+      pathname: '/signaler',
       params: {
         ean: String(ean),
         nom: produit.nom ?? '',
-        bacs: bacs.map((b) => b.categorie).join(','),
-        detail: bacs.map((b) => b.elements.join(', ')).join(' ; '),
-        origine: fiabilite,
+        marque: produit.marque ?? '',
+        origine: fiabilite === 'aucune' ? '' : fiabilite,
+        elements: JSON.stringify(
+          fiabilite === 'aucune' ? [] : bacs.flatMap((b) => b.elements.map((nom) => ({ nom, bac: b.categorie }))),
+        ),
       },
     });
+
+  // Données d'Open Food Facts affichées (fiche venue d'OFF, ou produit de la base copié d'OFF) :
+  // leur licence (ODbL) impose de les citer.
+  const origineBase: string | undefined = produit.consigneBase?.origine;
+  const donneesOff = produit.source !== 'proserpine' || (origineBase !== undefined && origineBase !== 'proserpine');
 
   // Nom court + « marque · quantité » (la quantité sort du nom ; les listes de marques sont réduites à la première).
   const affiche = formaterProduit(produit.nom, produit.marque, produit.donnees_brutes?.quantity);
@@ -241,11 +253,14 @@ export default function ProduitScreen() {
         {nonRafraichi ? <BandeauHorsLigne /> : null}
 
         {fiabilite === 'aucune' ? (
-          <ChoixMatiere
-            indetermine={indetermine}
-            onChoisir={setMatiereChoisie}
-            onGuide={() => router.push('/(tabs)/guide')}
-          />
+          <>
+            <ChoixMatiere
+              indetermine={indetermine}
+              onChoisir={setMatiereChoisie}
+              onGuide={() => router.push('/(tabs)/guide')}
+            />
+            <LienSignaler onPress={signaler} />
+          </>
         ) : (
           <SectionTri
             bacs={bacs}
@@ -271,7 +286,11 @@ export default function ProduitScreen() {
           />
         ) : null}
 
-        <Source nom={NOMS_SOURCES[produit.source] ?? String(produit.source ?? 'Open Food Facts')} />
+        <Source
+          nom={NOMS_SOURCES[produit.source] ?? String(produit.source ?? 'Open Food Facts')}
+          consigneProserpine={fiabilite === 'verifie'}
+          attributionOff={donneesOff}
+        />
       </ScrollView>
 
       <FeuilleIndice

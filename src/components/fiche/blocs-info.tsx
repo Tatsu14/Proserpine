@@ -2,8 +2,9 @@
  * BLOCS D'INFORMATION de la fiche produit (variante B) : en-tête fin, bannière
  * hors-ligne, boîte « Conseil de tri », bloc compact « Indice d'impact », source.
  */
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { TexteMesure as Text } from '@/components/ui/texte';
+import { LIEN_OPEN_FOOD_FACTS } from '@/constants/liens';
 import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -143,8 +144,37 @@ export function BlocIndice({
 }
 
 /** Mention de la base de données d'où viennent les informations. */
-export function Source({ nom }: { nom: string }) {
-  return <Text style={styles.source}>Source : {nom}</Text>;
+/**
+ * Source des données, en bas de la fiche.
+ *  - `consigneProserpine` : la consigne de tri vient de la base de Proserpine (vérifiée), pas d'un calcul.
+ *  - `attributionOff` : la fiche montre des données d'Open Food Facts ; leur licence (ODbL) impose de
+ *    citer « © Open Food Facts contributors » avec un lien vers leur site.
+ */
+export function Source({
+  nom,
+  consigneProserpine,
+  attributionOff,
+}: {
+  nom: string;
+  consigneProserpine?: boolean;
+  attributionOff?: boolean;
+}) {
+  return (
+    <View style={styles.sourceBloc}>
+      <Text style={styles.sourceLigne}>Source : {nom}</Text>
+      {consigneProserpine ? <Text style={styles.sourceLigne}>Consigne de tri vérifiée par Proserpine</Text> : null}
+      {attributionOff ? (
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel="Ouvrir le site d'Open Food Facts"
+          onPress={() => Linking.openURL(LIEN_OPEN_FOOD_FACTS).catch(() => {})}
+          style={styles.sourceLien}
+        >
+          <Text style={[styles.sourceLigne, styles.sourceLienTexte]}>© Open Food Facts contributors · licence ODbL</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -239,13 +269,13 @@ const styles = StyleSheet.create({
   },
   lienPourquoiTexte: { fontFamily: police.extraGras, fontSize: tailleTexte.base, color: '#00663A' },
 
-  source: {
+  sourceBloc: { paddingTop: 18, paddingBottom: 28, paddingHorizontal: 16, gap: 4, alignItems: 'center' },
+  sourceLigne: {
     fontFamily: police.normal,
     textAlign: 'center',
     fontSize: tailleTexte.sm,
     color: couleurs.texteAttenue,
-    paddingTop: 18,
-    paddingBottom: 28,
-    paddingHorizontal: 16,
   },
+  sourceLien: { minHeight: 44, justifyContent: 'center' },
+  sourceLienTexte: { textDecorationLine: 'underline' },
 });
