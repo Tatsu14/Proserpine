@@ -169,7 +169,7 @@ export default function ProfilScreen() {
         <>
           <Text style={styles.sectionTitre}>Administration</Text>
           <View style={styles.liste}>
-            <LigneMenu icone="admin_panel_settings" libelle="Retours des utilisateurs" onPress={() => router.push('/admin')} />
+            <LigneMenu icone="admin_panel_settings" libelle="Propositions, produits et retours" onPress={() => router.push('/admin')} />
           </View>
         </>
       ) : null}

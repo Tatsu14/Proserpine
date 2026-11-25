@@ -42,8 +42,13 @@
 - Accès réservé à un compte administrateur, contrôle côté serveur (jamais dans le navigateur). Pour les
   premiers tests, le compte administrateur actuel de l'app (`UID_ADMIN` dans src/constants/admin.ts) ; compte
   dédié plus tard.
-- Voie rapide possible pour tester plus tôt : ajouter un onglet « Propositions » à l'écran d'administration
-  existant de l'app (src/app/admin.tsx, aussi accessible sur le site web), le site complet venant ensuite.
+- **Décision du 25/11 (mise à jour 2)** : l'administration est construite dans l'écran existant de l'app
+  (src/app/admin.tsx, aussi accessible sur le site web /admin), avec trois sections : Propositions, Produits
+  (identité + emballages), Retours (Firestore). Composants dans src/components/admin/. Écrans validés sur
+  captures par Monsieur (« moins grave si l'écran admin est moche »).
+- Le futur site React + Vite utilisera un **compte administrateur différent** : la fonction serveur
+  `proserpine-api` lit la liste des comptes autorisés dans la variable `UIDS_ADMIN` (plusieurs UID séparés par
+  des virgules ; par défaut, l'UID de l'app).
 
 ## 4. Saisie manuelle du code-barres (idée du 24/11, précisée par Monsieur)
 - Principe : **détection automatique**. Quand, malgré les contrôles de src/services/ean.ts, la caméra continue de
@@ -69,3 +74,9 @@
    déclenchée automatiquement par une lecture difficile.
 4. Lecture de la base par l'app, Open Food Facts en secours.
 Chaque étape est montrée à Monsieur avant la suivante. Nouveau build de test avant tout envoi au store.
+
+## 6. Règles d'interface décidées le 25/11
+- La fenêtre « Produit non trouvé » du scanner a **deux boutons au plus** : « Scanner à nouveau » et « Proposer ce
+  produit » (« Rechercher manuellement » retiré). Cette règle ne vaut QUE pour cette fenêtre (pas pour
+  l'administration ni ailleurs) ; l'écran « Produit introuvable » garde ses trois boutons.
+- Toujours montrer des captures des vrais écrans à Monsieur avant de les considérer comme terminés.

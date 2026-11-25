@@ -8,7 +8,7 @@
 export const UID_ADMIN = 'L4xcWYA4NGTpt4QMCp134SGmQA82';
 
 /**
- * Entrée « Administration » du Profil : masquée tant que les retours passent par Google Forms.
- * Passer à `true` pour réactiver l'écran admin (retours enregistrés dans Firestore).
+ * Entrée « Administration » du Profil (propositions, produits de la base, retours).
+ * Passer à `false` pour la masquer.
  */
-export const ADMIN_VISIBLE = false;
+export const ADMIN_VISIBLE = true;
