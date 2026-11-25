@@ -24,7 +24,7 @@ import { useUi } from '@/components/ui/ui-provider';
 import { Icone } from '@/design/icones';
 import { couleurs, police, rayon, tailleTexte } from '@/design/tokens';
 import { appelerApi, messageErreur } from '@/services/api-proserpine';
-import { BACS_BASE, COUCHES, type BacBase, type Couche } from '@/services/base-produits';
+import { BACS_BASE, COUCHES, majuscule, type BacBase, type Couche } from '@/services/base-produits';
 import { cleEanValide } from '@/services/ean';
 
 const MAX_EMBALLAGES = 8;
@@ -77,7 +77,7 @@ export default function ProposerScreen() {
       nom: nom.trim(),
       marque: marque.trim() || null,
       emballages: lignes.length
-        ? lignes.map((l) => ({ nom: l.nom.trim(), couche: l.couche, bac: l.bac === 'inconnu' ? null : l.bac }))
+        ? lignes.map((l) => ({ nom: majuscule(l.nom), couche: l.couche, bac: l.bac === 'inconnu' ? null : l.bac }))
         : null,
     });
     setEnvoi(false);

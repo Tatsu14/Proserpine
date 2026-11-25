@@ -51,6 +51,12 @@ export type ProduitBase = {
   emballages: EmballageBase[];
 };
 
+/** Première lettre en majuscule (« sachet plastique » → « Sachet plastique »), le reste inchangé. */
+export const majuscule = (texte: string) => {
+  const t = texte.trim();
+  return t.charAt(0).toLocaleUpperCase('fr') + t.slice(1);
+};
+
 export const libelleBac = (id: string | null) => BACS_BASE.find((b) => b.id === id)?.libelle ?? 'Bac inconnu';
 export const libelleCouche = (id: string) => COUCHES.find((c) => c.id === id)?.libelle ?? id;
 
@@ -90,7 +96,7 @@ export function triDepuisBase(base: ProduitBase | null | undefined) {
   if (!base) return null;
   const composants = base.emballages.flatMap((e) => {
     const bac = BACS_BASE.find((b) => b.id === e.bac);
-    return bac ? [{ description: e.nom, categorie: bac.categorie }] : [];
+    return bac ? [{ description: majuscule(e.nom), categorie: bac.categorie }] : [];
   });
   if (composants.length === 0) return null;
   return { composants, instructions: genererInstructions(composants), source: 'base' as const };
