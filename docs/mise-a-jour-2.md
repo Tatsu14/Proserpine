@@ -80,3 +80,18 @@ Chaque étape est montrée à Monsieur avant la suivante. Nouveau build de test 
   produit » (« Rechercher manuellement » retiré). Cette règle ne vaut QUE pour cette fenêtre (pas pour
   l'administration ni ailleurs) ; l'écran « Produit introuvable » garde ses trois boutons.
 - Toujours montrer des captures des vrais écrans à Monsieur avant de les considérer comme terminés.
+
+## 7. Décisions du 25/11 (fin de journée)
+- **Site d'administration** : React + Vite, dans `Tatsu14/Proserpine-V2`, dossier `site-admin/` (le reste du dépôt,
+  l'ancienne version web, n'est pas touché). En ligne : https://proserpine-admin.vercel.app (projet Vercel
+  `proserpine-admin`, mis en production depuis la branche de travail). Compte admin dédié : UID `KINp…`
+  (autorisé dans la fonction serveur et dans les règles Firestore).
+- **Signaler une erreur (option A)** : lien « Une erreur ? Signaler » sur la fiche → choix « La consigne de tri » /
+  « Les informations du produit ». Consigne : élément par élément (« C'est juste » ou le bon bac, élément manquant).
+  Produit : nom, marque, quantité, « ce n'est pas ce produit » + bonne information. Message clair si le signalement
+  est vide. Stockage : `prive.signalements` via `proserpine-api` (plus Firestore). Section « Signalements » du site.
+- **Code postal** : obligatoire, seulement pour les signalements de consigne, demandé dans le formulaire et mémorisé
+  sur le téléphone (4 chiffres, 1000–9999). But : adapter plus tard les consignes par commune.
+- **Aucune mention d'une région précise** pour les consignes (politique, accueil, guide).
+- Les noms d'emballages s'affichent avec une majuscule initiale.
+- Fusion dans `main` le 25/11 avec l'accord de Monsieur (site public + politique de confidentialité).
