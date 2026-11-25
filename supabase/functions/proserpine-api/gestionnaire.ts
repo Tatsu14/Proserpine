@@ -41,6 +41,9 @@ const ERREURS_CONNUES: Record<string, number> = {
   deja_propose: 409,
   deja_traitee: 409,
   trop_de_propositions: 429,
+  signalement_invalide: 400,
+  signalement_vide: 400,
+  trop_de_signalements: 429,
 };
 
 // Conversion prudente des paramètres reçus : un mauvais type devient une valeur que la base refusera proprement.
@@ -68,6 +71,21 @@ const ACTIONS: Record<string, Action> = {
     }),
   },
   effacer_identifiant: { admin: false, fonction: 'api_effacer_identifiant', params: (_c, uid) => ({ p_utilisateur: uid }) },
+  signaler: {
+    admin: false,
+    fonction: 'api_signaler',
+    params: (c, uid) => ({
+      p_utilisateur: uid,
+      p_type: texte(c.type),
+      p_ean: texte(c.ean),
+      p_nom_produit: texteOuNul(c.nom_produit),
+      p_origine: texteOuNul(c.origine),
+      p_elements: listeOuNul(c.elements),
+      p_champs: listeOuNul(c.champs),
+      p_correction: texteOuNul(c.correction),
+      p_commentaire: texteOuNul(c.commentaire),
+    }),
+  },
 
   // --- Administration ---
   admin_lister_propositions: {
@@ -103,6 +121,16 @@ const ACTIONS: Record<string, Action> = {
     params: (c) => ({ p_ean: texte(c.ean), p_nom: texte(c.nom), p_marque: texteOuNul(c.marque), p_quantite: texteOuNul(c.quantite) }),
   },
   admin_lire_emballages: { admin: true, fonction: 'api_admin_lire_emballages', params: (c) => ({ p_ean: texte(c.ean) }) },
+  admin_lister_signalements: {
+    admin: true,
+    fonction: 'api_admin_lister_signalements',
+    params: (c) => ({ p_statut: texteOuNul(c.statut), p_limite: nombreOuNul(c.limite) }),
+  },
+  admin_statut_signalement: {
+    admin: true,
+    fonction: 'api_admin_statut_signalement',
+    params: (c) => ({ p_id: entier(c.id), p_statut: texte(c.statut) }),
+  },
   admin_remplacer_emballages: {
     admin: true,
     fonction: 'api_admin_remplacer_emballages',
