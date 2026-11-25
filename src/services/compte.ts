@@ -13,7 +13,7 @@ import {
   updatePassword,
   updateProfile,
 } from 'firebase/auth';
-import { collection, deleteDoc, doc, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, setDoc, writeBatch } from 'firebase/firestore';
 import { Platform } from 'react-native';
 
 import { appelerApi } from './api-proserpine';
@@ -73,7 +73,9 @@ export async function changerNomUtilisateur(nouveauNom: string): Promise<Resulta
   }
   try {
     // Firestore d'abord : c'est lui que l'app lit en priorité pour afficher le nom.
-    await updateDoc(doc(db, 'utilisateurs', user.uid), { username: nom });
+    // « merge » : crée la fiche si elle n'existe pas encore (compte créé ailleurs que dans l'app,
+    // par exemple dans la console Firebase), sans rien effacer si elle existe.
+    await setDoc(doc(db, 'utilisateurs', user.uid), { username: nom }, { merge: true });
     await updateProfile(user, { displayName: nom });
     return { success: true, nom };
   } catch (e: any) {
