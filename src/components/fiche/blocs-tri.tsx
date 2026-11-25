@@ -107,6 +107,16 @@ export function CarteBac({ bac, onPress }: { bac: Bac; onPress?: () => void }) {
 }
 
 /** Section « Où le jeter ? » : titre, étiquette de fiabilité, puis les cartes de bac. */
+/** Lien « Une erreur ? Signaler » : consigne de tri ou informations du produit (écran /signaler). */
+export function LienSignaler({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.lienSignaler}>
+      <Icone nom="report_problem" taille={18} couleur={couleurs.texteAttenue} />
+      <Text style={styles.lienSignalerTexte}>Une erreur ? Signaler</Text>
+    </Pressable>
+  );
+}
+
 export function SectionTri({
   bacs,
   fiabilite,
@@ -127,7 +137,7 @@ export function SectionTri({
   explication?: string | null;
   /** Si fourni, affiche « Changer de matière » (cas où la matière a été choisie par l'utilisateur). */
   onChanger?: () => void;
-  /** Si fourni, affiche le lien « Cette consigne est fausse ? Signaler » sous la section. */
+  /** Si fourni, affiche le lien « Une erreur ? Signaler » sous la section. */
   onSignaler?: () => void;
   onOuvrirGuide: (categorie: string) => void;
 }) {
@@ -180,12 +190,7 @@ export function SectionTri({
         </View>
       ) : null}
 
-      {onSignaler ? (
-        <Pressable accessibilityRole="button" onPress={onSignaler} style={styles.lienSignaler}>
-          <Icone nom="report_problem" taille={18} couleur={couleurs.texteAttenue} />
-          <Text style={styles.lienSignalerTexte}>Cette consigne est fausse ? Signaler</Text>
-        </Pressable>
-      ) : null}
+      {onSignaler ? <LienSignaler onPress={onSignaler} /> : null}
     </View>
   );
 }

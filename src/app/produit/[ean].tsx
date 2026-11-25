@@ -33,7 +33,7 @@ import { BandeauHorsLigne, BlocIndice, BoiteConseil, EnteteFiche, Source } from 
 import { ChoixMatiere } from '@/components/fiche/choix-matiere';
 import { EcranChargement, EcranIntrouvable } from '@/components/fiche/ecrans-etat';
 import { FeuilleIndice } from '@/components/fiche/feuille-indice';
-import { SectionTri, type Bac, type Fiabilite } from '@/components/fiche/blocs-tri';
+import { LienSignaler, SectionTri, type Bac, type Fiabilite } from '@/components/fiche/blocs-tri';
 import { scoreColor } from '@/constants/colors';
 import { useAuth } from '@/contexts/auth';
 import { useReglages } from '@/contexts/reglages';
@@ -216,20 +216,20 @@ export default function ProduitScreen() {
   // et aucun pour le Recyparc seul ou en l'absence de consigne (textes provisoires).
   const conseil = fiabilite !== 'aucune' ? conseilPour(bacs) : null;
 
-  // Signalement d'une consigne fausse : on transmet le produit, le tri affiché et son origine
-  // (l'utilisateur ne retape rien). Pas de lien quand aucune consigne n'est affichée.
-  // Une consigne de la base est transmise comme « lue » (seules valeurs admises par les règles Firestore),
-  // avec le repère `base=1` : l'écran de signalement et l'administration savent qu'elle vient de la base.
+  // Signaler une erreur (consigne ou informations du produit) : on transmet le produit et chaque élément affiché
+  // avec son bac (l'utilisateur ne retape rien). Le lien est aussi proposé quand aucune consigne n'est affichée :
+  // on peut alors signaler un élément manquant ou une erreur sur le produit.
   const signaler = () =>
     router.push({
-      pathname: '/signaler-consigne',
+      pathname: '/signaler',
       params: {
         ean: String(ean),
         nom: produit.nom ?? '',
-        bacs: bacs.map((b) => b.categorie).join(','),
-        detail: bacs.map((b) => b.elements.join(', ')).join(' ; '),
-        origine: fiabilite === 'verifie' ? 'lu' : fiabilite,
-        base: fiabilite === 'verifie' ? '1' : '',
+        marque: produit.marque ?? '',
+        origine: fiabilite === 'aucune' ? '' : fiabilite,
+        elements: JSON.stringify(
+          fiabilite === 'aucune' ? [] : bacs.flatMap((b) => b.elements.map((nom) => ({ nom, bac: b.categorie }))),
+        ),
       },
     });
 
@@ -253,11 +253,14 @@ export default function ProduitScreen() {
         {nonRafraichi ? <BandeauHorsLigne /> : null}
 
         {fiabilite === 'aucune' ? (
-          <ChoixMatiere
-            indetermine={indetermine}
-            onChoisir={setMatiereChoisie}
-            onGuide={() => router.push('/(tabs)/guide')}
-          />
+          <>
+            <ChoixMatiere
+              indetermine={indetermine}
+              onChoisir={setMatiereChoisie}
+              onGuide={() => router.push('/(tabs)/guide')}
+            />
+            <LienSignaler onPress={signaler} />
+          </>
         ) : (
           <SectionTri
             bacs={bacs}
