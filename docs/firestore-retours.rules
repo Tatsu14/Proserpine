@@ -2,9 +2,9 @@ rules_version = '2';
 // Règles Firestore COMPLÈTES de Proserpine : règles existantes (utilisateurs) + retours des
 // utilisateurs (avis et signalements). À coller dans la console Firebase (Firestore > Règles).
 //
-// Avant de publier : remplacer REMPLACER_PAR_L_UID_ADMIN par l'UID du compte administrateur
-// (console Firebase > Authentication > Utilisateurs > colonne « UID »), puis tester dans le
-// « Simulateur de règles ». Ne pas commiter l'UID réel dans le dépôt.
+// Avant de publier : remplacer UID_ADMIN_APP et UID_ADMIN_SITE par les UID des comptes administrateurs
+// (console Firebase > Authentication > Utilisateurs > colonne « UID ») : celui de l'app et celui du site
+// d'administration (proserpine-admin.vercel.app), puis tester dans le « Simulateur de règles ».
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -15,7 +15,7 @@ service cloud.firestore {
 
     // --- Retours des utilisateurs ---
     function estAdmin() {
-      return request.auth != null && request.auth.uid == 'REMPLACER_PAR_L_UID_ADMIN';
+      return request.auth != null && request.auth.uid in ['UID_ADMIN_APP', 'UID_ADMIN_SITE'];
     }
 
     function texteOuNul(valeur) {
