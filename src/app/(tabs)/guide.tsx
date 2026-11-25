@@ -28,7 +28,7 @@ export default function GuideScreen() {
       {/* .guide-header */}
       <View style={[styles.entete, { paddingTop: 16 + marges.top }]}>
         <Text style={styles.titre}>Guide de tri</Text>
-        <Text style={styles.sousTitre}>Province de Liège</Text>
+        <Text style={styles.sousTitre}>Les consignes, bac par bac</Text>
       </View>
 
       {/* .guide-grid */}

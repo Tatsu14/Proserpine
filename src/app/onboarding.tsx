@@ -80,8 +80,8 @@ export default function OnboardingScreen() {
           </Text>
           <View style={styles.separateur} />
           <Text style={styles.contexte}>
-            Gratuite, sans publicités, pédagogique et bienveillante, elle est adaptée aux règles de tri de la Province de
-            Liège — et bientôt aux consignes de chaque commune.
+            Gratuite, sans publicités, pédagogique et bienveillante, elle s'adaptera bientôt aux consignes de chaque
+            commune.
           </Text>
         </View>
 

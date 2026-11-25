@@ -113,7 +113,7 @@ export default function GuideDetailScreen() {
           <View style={styles.conseil}>
             <Icone nom="lightbulb" taille={24} couleur={couleurs.statutAttention} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.conseilTitre}>Conseil Intradel (Liège)</Text>
+              <Text style={styles.conseilTitre}>Conseil de tri</Text>
               <Text style={styles.conseilTexte}>{cat.tip}</Text>
             </View>
           </View>
