@@ -46,16 +46,18 @@ export function EcranIntrouvable({
         <Icone nom="refresh" taille={22} couleur={couleurs.marqueSombre} />
         <Text style={[styles.boutonTexte, { color: couleurs.marqueSombre }]}>Réessayer</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" onPress={onChercher} style={[styles.bouton, styles.boutonGris]}>
-        <Icone nom="search" taille={22} couleur={couleurs.texte} />
-        <Text style={[styles.boutonTexte, { color: couleurs.texte }]}>Chercher par nom</Text>
-      </Pressable>
+      {/* Deux boutons au plus par écran (choix de Monsieur) : « Proposer » remplace « Chercher par nom ». */}
       {onProposer ? (
         <Pressable accessibilityRole="button" onPress={onProposer} style={[styles.bouton, styles.boutonGris]}>
           <Icone nom="add_circle" taille={22} couleur={couleurs.texte} />
           <Text style={[styles.boutonTexte, { color: couleurs.texte }]}>Proposer ce produit</Text>
         </Pressable>
-      ) : null}
+      ) : (
+        <Pressable accessibilityRole="button" onPress={onChercher} style={[styles.bouton, styles.boutonGris]}>
+          <Icone nom="search" taille={22} couleur={couleurs.texte} />
+          <Text style={[styles.boutonTexte, { color: couleurs.texte }]}>Chercher par nom</Text>
+        </Pressable>
+      )}
     </View>
   );
 }

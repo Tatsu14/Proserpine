@@ -100,7 +100,7 @@ export default function ProposerScreen() {
 
       <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.contenu}>
         <Text style={styles.intro}>
-          Ce produit n’est pas encore dans Proserpine. Proposez-le : nous le vérifierons avant de l’ajouter pour tout le monde.
+          {'Ce produit n’est pas encore dans Proserpine. Proposez-le : nous le vérifierons avant de l’ajouter pour tout le monde.'}
         </Text>
 
         <Champ

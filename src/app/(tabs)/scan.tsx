@@ -222,17 +222,16 @@ export default function ScanScreen() {
         titre: 'Produit non trouvé',
         message:
           "Ce produit n'est pas encore référencé dans notre base de données. Vous pouvez nous le proposer : nous le vérifierons avant de l'ajouter.",
+        // Deux boutons au plus par fenêtre (choix de Monsieur).
         confirmer: 'Scanner à nouveau',
-        annuler: 'Rechercher manuellement',
-        autre: 'Proposer ce produit',
-        onAutre: () => router.replace({ pathname: '/proposer', params: { ean: code } }),
+        annuler: 'Proposer ce produit',
         onConfirmer: () => {
           enTraitement.current = false;
           confirmateur.reinitialiser();
           setTexte(TEXTE_ATTENTE);
           setCamera(true);
         },
-        onAnnuler: () => router.replace({ pathname: '/(tabs)/recherche', params: { q: code } }),
+        onAnnuler: () => router.replace({ pathname: '/proposer', params: { ean: code } }),
       });
     }
   };
