@@ -23,7 +23,10 @@ import { messageErreur } from '@/services/api-proserpine';
 import { majuscule } from '@/services/base-produits';
 import {
   BACS_SIGNALEMENT,
+  codePostalValide,
   envoyerSignalementConsigne,
+  lireCodePostalMemorise,
+  memoriserCodePostal,
   libelleBacSignalement,
   LONGUEUR_MAX_TEXTE,
   MAX_ELEMENTS,
@@ -53,11 +56,20 @@ export default function SignalerConsigneScreen() {
   const [choix, setChoix] = useState<Choix[]>(() => produit.elements.map(() => 'ok'));
   const [ajouts, setAjouts] = useState<Ajout[]>([]);
   const [commentaire, setCommentaire] = useState('');
+  const [codePostal, setCodePostal] = useState('');
+  const [codePostalTouche, setCodePostalTouche] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
 
   // Le message d'erreur disparaît dès que l'utilisateur modifie son signalement.
-  useEffect(() => setErreur(null), [choix, ajouts, commentaire]);
+  useEffect(() => setErreur(null), [choix, ajouts, commentaire, codePostal]);
+
+  // Code postal déjà donné lors d'un signalement précédent : pré-rempli (il reste modifiable).
+  useEffect(() => {
+    lireCodePostalMemorise().then((cp) => {
+      if (cp) setCodePostal((actuel) => actuel || cp);
+    });
+  }, []);
   const prochaineCle = useRef(1);
 
   const peutAjouter = produit.elements.length + ajouts.length < MAX_ELEMENTS;
@@ -89,6 +101,11 @@ export default function SignalerConsigneScreen() {
       );
       return;
     }
+    if (!codePostalValide(codePostal)) {
+      setCodePostalTouche(true);
+      setErreur('Indiquez votre code postal (4 chiffres) : les règles de tri changent d’une commune à l’autre.');
+      return;
+    }
     setEnvoi(true);
     const r = await envoyerSignalementConsigne({
       ean: produit.ean,
@@ -96,9 +113,11 @@ export default function SignalerConsigneScreen() {
       origine: produit.origine,
       elements,
       commentaire,
+      codePostal,
     });
     setEnvoi(false);
     if (r.ok) {
+      memoriserCodePostal(codePostal);
       ui.informer({
         titre: 'Merci pour votre signalement',
         message: 'Nous allons le vérifier et corriger la consigne si besoin.',
@@ -186,6 +205,22 @@ export default function SignalerConsigneScreen() {
         ) : null}
 
         <Champ
+          etiquette="Votre code postal"
+          value={codePostal}
+          onChangeText={(v) => setCodePostal(v.replace(/\D/g, '').slice(0, 4))}
+          onBlur={() => setCodePostalTouche(true)}
+          keyboardType="number-pad"
+          maxLength={4}
+          invalide={codePostalTouche && !codePostalValide(codePostal)}
+          erreur="4 chiffres, par exemple 4430."
+          placeholder="Ex. : 4430"
+        />
+        <Text style={styles.aideCodePostal}>
+          Les règles de tri changent d’une commune à l’autre : votre code postal nous aide à vérifier la bonne
+          consigne. Il est gardé sur votre téléphone pour vos prochains signalements.
+        </Text>
+
+        <Champ
           etiquette="Commentaire (facultatif)"
           multiligne
           value={commentaire}
@@ -241,5 +276,6 @@ const styles = StyleSheet.create({
     borderColor: couleurs.fondPointille,
     borderRadius: rayon.md,
   },
+  aideCodePostal: { fontFamily: police.normal, fontSize: tailleTexte.sm, color: couleurs.texteAttenue, marginTop: -8, marginBottom: 16 },
   ajoutTexte: { fontFamily: police.gras, fontSize: tailleTexte.md, color: couleurs.texteAttenue },
 });

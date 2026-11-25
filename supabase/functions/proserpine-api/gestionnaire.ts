@@ -44,6 +44,7 @@ const ERREURS_CONNUES: Record<string, number> = {
   signalement_invalide: 400,
   signalement_vide: 400,
   trop_de_signalements: 429,
+  code_postal_invalide: 400,
 };
 
 // Conversion prudente des paramètres reçus : un mauvais type devient une valeur que la base refusera proprement.
@@ -84,6 +85,7 @@ const ACTIONS: Record<string, Action> = {
       p_champs: listeOuNul(c.champs),
       p_correction: texteOuNul(c.correction),
       p_commentaire: texteOuNul(c.commentaire),
+      p_code_postal: texteOuNul(c.code_postal),
     }),
   },
 

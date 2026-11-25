@@ -31,6 +31,7 @@ const MESSAGES_ERREUR: Record<string, string> = {
   trop_de_propositions: 'Vous avez atteint la limite de 5 propositions par jour. Réessayez demain.',
   signalement_vide: 'Votre signalement est vide : indiquez au moins une erreur.',
   signalement_invalide: 'Une information du signalement est incorrecte. Vérifiez-la puis réessayez.',
+  code_postal_invalide: 'Indiquez votre code postal (4 chiffres).',
   trop_de_signalements: 'Vous avez atteint la limite de 10 signalements par jour. Réessayez demain.',
   reseau: 'Connexion impossible. Vérifiez votre connexion internet puis réessayez.',
   delai: 'Le serveur met trop de temps à répondre. Réessayez dans un instant.',

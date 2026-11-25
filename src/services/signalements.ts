@@ -8,6 +8,8 @@
  * Envoi par la fonction serveur (base Proserpine, schéma fermé), comme les propositions. La base refait tous les
  * contrôles ; ceux d'ici servent seulement à afficher un message clair avant l'envoi (signalement vide, etc.).
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { appelerApi } from './api-proserpine';
 
 /** Bacs affichés par l'app (catégories des cartes de tri). */
@@ -57,12 +59,38 @@ export function lireElements(texte: string): ElementAffiche[] {
   }
 }
 
+// -------------------------------------------------------------------------------------
+// Code postal (signalement de consigne) : obligatoire, mémorisé sur le téléphone pour ne le taper qu'une fois.
+// Code postal belge : 4 chiffres, de 1000 à 9999.
+// -------------------------------------------------------------------------------------
+const CLE_CODE_POSTAL = 'proserpine:code-postal';
+
+export const codePostalValide = (cp: string) => /^[1-9][0-9]{3}$/.test(cp);
+
+export async function lireCodePostalMemorise(): Promise<string> {
+  try {
+    const cp = (await AsyncStorage.getItem(CLE_CODE_POSTAL)) ?? '';
+    return codePostalValide(cp) ? cp : '';
+  } catch {
+    return '';
+  }
+}
+
+export async function memoriserCodePostal(cp: string): Promise<void> {
+  try {
+    if (codePostalValide(cp)) await AsyncStorage.setItem(CLE_CODE_POSTAL, cp);
+  } catch {
+    // sans conséquence : il sera simplement redemandé
+  }
+}
+
 export function envoyerSignalementConsigne(s: {
   ean: string;
   nomProduit: string;
   origine: OrigineSignalement | null;
   elements: ElementSignale[];
   commentaire: string;
+  codePostal: string;
 }) {
   return appelerApi<{ id: number }>('signaler', {
     type: 'consigne',
@@ -71,6 +99,7 @@ export function envoyerSignalementConsigne(s: {
     origine: s.origine,
     elements: s.elements,
     commentaire: s.commentaire.trim() || null,
+    code_postal: s.codePostal,
   });
 }
 
