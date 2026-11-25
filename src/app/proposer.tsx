@@ -182,7 +182,7 @@ export default function ProposerScreen() {
 
         <Text style={styles.confidentialite}>
           Pour éviter les abus, votre proposition est liée à votre compte par un identifiant technique (ni nom ni
-          e-mail), conservé 12 mois au plus.
+          e-mail), effacé 12 mois après l’examen de la proposition, ou dès la suppression de votre compte.
         </Text>
         <BoutonPrimaire onPress={envoyer} disabled={envoi}>
           {envoi ? 'Envoi…' : 'Envoyer la proposition'}
