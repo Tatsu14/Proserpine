@@ -17,12 +17,13 @@ import { collection, deleteDoc, doc, getDocs, setDoc, writeBatch } from 'firebas
 import { Platform } from 'react-native';
 
 import { appelerApi } from './api-proserpine';
+import { REGEX_PSEUDO } from './pseudo';
 import { auth, db, googleProvider } from './firebase';
 
 export type ResultatCompte = { success: boolean; error?: string; nom?: string };
 
 // Mêmes règles de validation que l'inscription.
-const REGEX_NOM_UTILISATEUR = /^[a-zA-Z0-9_-]{3,20}$/;
+const REGEX_NOM_UTILISATEUR = REGEX_PSEUDO; // une seule règle, dans services/pseudo.ts
 const REGEX_MOT_DE_PASSE = /^(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
 
 // Firestore accepte au maximum 500 opérations par lot : on reste en dessous.

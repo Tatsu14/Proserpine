@@ -18,6 +18,8 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+
+import { pseudoDepuisNom, pseudoValide } from './pseudo';
 import { Platform } from 'react-native';
 
 import { auth, db, googleProvider } from './firebase';
@@ -90,8 +92,18 @@ export async function loginWithGoogle(): Promise<AuthResult> {
     const ref = doc(db, 'utilisateurs', user.uid);
     const existant = await getDoc(ref);
     if (!existant.exists()) {
-      await setDoc(ref, { username: user.displayName || '', email: user.email, createdAt: serverTimestamp() });
+      // Le nom Google (« Jean-Pierre Dupont ») ne respecte pas forcément la règle des pseudos : on le convertit.
+      const pseudo = pseudoDepuisNom(user.displayName, user.email);
+      await setDoc(ref, { username: pseudo, email: user.email, createdAt: serverTimestamp() });
+      await updateProfile(user, { displayName: pseudo }).catch(() => {});
       return { success: true, nouveau: true };
+    }
+    // Compte créé avant la correction : pseudo non conforme remplacé par sa version convertie.
+    const actuel = (existant.data() as any)?.username;
+    if (!pseudoValide(actuel)) {
+      const pseudo = pseudoDepuisNom(actuel || user.displayName, user.email);
+      await setDoc(ref, { username: pseudo }, { merge: true });
+      await updateProfile(user, { displayName: pseudo }).catch(() => {});
     }
     return { success: true, nouveau: false };
   } catch (e: any) {
