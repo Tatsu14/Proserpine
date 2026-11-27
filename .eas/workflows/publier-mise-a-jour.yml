@@ -1,0 +1,14 @@
+# Publie une mise à jour « sans Play Store » (EAS Update) vers les téléphones Android installés depuis le Play Store.
+# Elle n'est reçue que par les versions compatibles (même runtimeVersion, ici 1.0.0) : aucun changement natif permis.
+# Lancement manuel uniquement (pas de déclenchement automatique).
+name: Publier la mise à jour sur les téléphones
+
+jobs:
+  publier:
+    name: Mise à jour Android (canal production)
+    type: update
+    environment: production
+    params:
+      channel: production
+      platform: android
+      message: 'Mise à jour 2 : base Proserpine, proposer un produit, signaler une erreur, corrections'
